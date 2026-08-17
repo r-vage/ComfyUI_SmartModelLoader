@@ -1,0 +1,38 @@
+[project]
+name = "ComfyUI_SmartModelLoader"
+description = "Secure diffusion model loaders and verified CivitAI/Hugging Face Download Manager for ComfyUI."
+version = "1.0.0"
+license = {file = "LICENSE"}
+dependencies = [
+    "torch",
+    "numpy",
+    "safetensors>=0.4,<0.9",
+    "requests",
+    "aiohttp",
+    "huggingface_hub>=0.30,<2",
+    "gguf>=0.6,<0.20",
+    "tqdm",
+    "einops",
+]
+
+[project.urls]
+Repository = "https://github.com/r-vage/ComfyUI_SmartModelLoader"
+
+[tool.comfy]
+PublisherId = "rvage"
+DisplayName = "ComfyUI Smart Model Loader"
+Icon = "https://raw.githubusercontent.com/r-vage/ComfyUI_SmartModelLoader/refs/heads/main/Readme/icon_eclipse.png"
+
+[tool.ruff]
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["E402"]
+"core/nunchaku_wrapper.py" = ["E402", "F401", "F841"]
+"extern/gguf/__init__.py" = ["F401"]
+"extern/gguf/loader.py" = ["E721", "E722", "E731"]
+"extern/nunchaku/__init__.py" = ["F401"]
+"tests/test_model_loader_security.py" = ["E402"]

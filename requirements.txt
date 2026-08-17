@@ -1,0 +1,12 @@
+torch
+numpy
+safetensors>=0.4,<0.9
+requests
+aiohttp
+huggingface_hub>=0.30,<2
+gguf>=0.6,<0.20
+tqdm
+einops
+
+# Optional: Nunchaku quantized model support (compiled CUDA package).
+# Install a ComfyUI-compatible nunchaku build separately when needed.

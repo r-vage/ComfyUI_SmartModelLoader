@@ -1,0 +1,9 @@
+ComfyUI Smart Model Loader
+Copyright 2026 r-vage
+
+This project was extracted from ComfyUI Eclipse and retains the six Eclipse
+loader node identifiers for workflow compatibility.
+
+The bundled GGUF integration is derived from ComfyUI-GGUF. The bundled
+Nunchaku integration contains compatibility code derived from
+ComfyUI-nunchaku. Their source notices remain in the corresponding files.
