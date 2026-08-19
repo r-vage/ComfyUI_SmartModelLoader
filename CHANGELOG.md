@@ -14,6 +14,7 @@
 
 - **Docs**
   - Document the complete pipeline, optional Eclipse integrations, independent installation, correct template path, support links, and Smart Model Loader branding.
+  - Add a Nodes 2.0 visual walkthrough with annotated loader modes, feature chips, template loading and missing-model recovery, conditioning, pipe sampling, menu discovery, and Download Manager views.
 
 **Changed files:**
 - `py/RvCond_CLIPTextEncode.py` (new)
@@ -31,6 +32,7 @@
 - `Readme/Smart_Loaders.md`
 - `Readme/Checkpoint_Loaders.md`
 - `Readme/Model_Loader_Security.md`
+- `Readme/assets/*.png` (new)
 - `pyproject.toml`
 - `core/keys.py`
 
