@@ -22,7 +22,7 @@ These are lightweight, focused loaders for users who want direct control over in
 
 ## Overview
 
-Eclipse provides five standalone loader nodes for users who prefer direct, focused control over individual components:
+ComfyUI Smart Model Loader provides five standalone loader nodes for users who prefer direct, focused control over individual components:
 
 | Node | Output | Use Case |
 |------|--------|----------|
@@ -47,7 +47,7 @@ For the all-in-one experience with templates, latent generation, sampler setting
 
 ## Model Loader
 
-**Node:** `Model Loader [Eclipse]` — Category: `Eclipse > Loader`
+**Node:** `Model Loader [Eclipse]` — Category: `Smart Model Loader > Loader`
 
 Loads a model and outputs individual components directly. Supports all model formats with optional LoRA, model sampling, and block swap via combo-chips.
 
@@ -77,7 +77,7 @@ Model Loader
 
 ## Model Loader Pipe
 
-**Node:** `Model Loader Pipe [Eclipse]` — Category: `Eclipse > Loader`
+**Node:** `Model Loader Pipe [Eclipse]` — Category: `Smart Model Loader > Loader`
 
 Same model loading as Model Loader but outputs a single PIPE dict instead of separate connections.
 
@@ -107,7 +107,7 @@ Model Loader Pipe
 
 ## CLIP Loader
 
-**Node:** `CLIP Loader [Eclipse]` — Category: `Eclipse > Loader`
+**Node:** `CLIP Loader [Eclipse]` — Category: `Smart Model Loader > Loader`
 
 Loads 1–4 external CLIP text encoder modules. Required for UNet, Nunchaku, and GGUF models that don't include a baked CLIP.
 
@@ -145,7 +145,7 @@ Settings: clip_count=2, clip_type="flux"
 
 ## VAE Loader
 
-**Node:** `VAE Loader [Eclipse]` — Category: `Eclipse > Loader`
+**Node:** `VAE Loader [Eclipse]` — Category: `Smart Model Loader > Loader`
 
 Loads an external VAE model with enhanced architecture detection (including Wan 2.1 support). Use this when your model format doesn't include a baked VAE, or when you want to override the baked VAE with a different one.
 
@@ -167,7 +167,7 @@ Loads an external VAE model with enhanced architecture detection (including Wan 
 
 ## VAE Loader Video+Audio
 
-**Node:** `VAE Loader Video+Audio [Eclipse]` — Category: `Eclipse > Loader`
+**Node:** `VAE Loader Video+Audio [Eclipse]` — Category: `Smart Model Loader > Loader`
 
 Loads both a video/image VAE and an LTXV/LTX2 audio VAE (or vocoder weights) in a single node, both from the `models/vae/` directory, and outputs them on separate sockets. This is highly useful for the GGUF LTX2 video generation flow where neither the video VAE nor the audio VAE is baked into the diffusion model file.
 
@@ -365,8 +365,7 @@ If Model Loader outputs None for clip or vae, the selected model type doesn't in
 ## Related Documentation
 
 - [Smart Model Loader Guide](Smart_Loaders.md) — All-in-one loader with templates, latent, sampler
-- [Smart Sampler Settings](Smart_Sampler_Settings_v2.md) — Sampler configuration nodes
-- [Save Images](Save_Images.md) — Save with metadata from pipe
+- [Pipeline Nodes](Pipeline_Nodes.md) — Included conditioning, pipe IO, and pipe sampler nodes
 
 ### CLIP Layer Setting Not Working
 
@@ -410,4 +409,4 @@ If Model Loader outputs None for clip or vae, the selected model type doesn't in
 
 ---
 
-**Need help?** Check the main [README](../README.md) or open an issue on the [GitHub repository](https://github.com/r-vage/ComfyUI_Eclipse).
+**Need help?** Check the main [README](../README.md) or open an issue on the [GitHub repository](https://github.com/r-vage/ComfyUI_SmartModelLoader).

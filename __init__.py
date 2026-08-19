@@ -42,6 +42,11 @@ class SmartModelLoaderExtension(ComfyExtension):
         from .py.RvLoader_SmartModelLoader import RvLoader_SmartModelLoader
         from .py.RvLoader_VaeLoader import RvLoader_VaeLoader
         from .py.RvLoader_VaeLoaderVideoAudio import RvLoader_VaeLoaderVideoAudio
+        from .py.RvCond_CLIPTextEncode import RvCond_CLIPTextEncode
+        from .py.RvCond_CLIPTextEncodeAdvanced import RvCond_CLIPTextEncodeAdvanced
+        from .py.RvCond_ConditioningZeroOut import RvCond_ConditioningZeroOut
+        from .py.RvPipe_IO_CheckpointLoader import RvPipe_IO_CheckpointLoader
+        from .py.RvSampler_KSamplerPipe import RvSampler_KSamplerPipe
 
         return [
             RvLoader_SmartModelLoader,
@@ -50,6 +55,11 @@ class SmartModelLoaderExtension(ComfyExtension):
             RvLoader_ClipLoader,
             RvLoader_VaeLoader,
             RvLoader_VaeLoaderVideoAudio,
+            RvCond_CLIPTextEncode,
+            RvCond_CLIPTextEncodeAdvanced,
+            RvCond_ConditioningZeroOut,
+            RvPipe_IO_CheckpointLoader,
+            RvSampler_KSamplerPipe,
         ]
 
 

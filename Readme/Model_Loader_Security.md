@@ -1,6 +1,6 @@
 # Diffusion Model Loader Security
 
-ComfyUI Smart Model Loader 1.0.0 applies one security and lifecycle policy to Smart Model Loader,
+ComfyUI Smart Model Loader 1.0.1 applies one security and lifecycle policy to Smart Model Loader,
 Model Loader, Model Loader Pipe, the VAE loaders, loader templates, integrity
 operations, and CivitAI acquisition. Existing node IDs, sockets, pipe keys,
 workflow fields, and templates remain compatible. HTTP clients use the new
@@ -35,7 +35,7 @@ format, containment, and symlink checks.
   baseline detects later changes but does not establish who published the file.
 - `verify` compares the primary model against trusted SHA-256 metadata when it
   is available and aborts before loading if the digest differs. When trusted
-  metadata is absent, Eclipse records a local baseline and continues loading;
+  metadata is absent, Smart Model Loader records a local baseline and continues loading;
   that baseline can detect later changes but does not prove model provenance.
 
 Hash metadata is versioned and records the file size, nanosecond modification
@@ -48,7 +48,7 @@ JSON files; malformed existing JSON is left untouched for diagnosis.
 ## CivitAI acquisition
 
 CivitAI installation requires an upstream SHA-256 and consistent AIR model,
-version, and file identities. Eclipse downloads through an exact file-ID URL,
+version, and file identities. Smart Model Loader downloads through an exact file-ID URL,
 validates every DNS result and redirect as a public address, limits redirects
 and response sizes, checks disk space, and accepts a resumed transfer only
 when the server proves the requested byte range. Bytes are staged, flushed,
@@ -91,10 +91,10 @@ fails.
 | Traversal or symlink escape | Canonical role containment and symlink rejection | Security of configured ComfyUI model roots |
 | Malformed workflow or template | Type, enum, bounds, feature, JSON, and path validation | Backend-specific semantic compatibility |
 | Forged or incomplete CivitAI file | Required SHA-256, exact AIR/file identity, staged verification | Trust in CivitAI metadata and TLS/public DNS |
-| SSRF through redirects | Public-address validation on each request target | Host-network policy outside Eclipse |
+| SSRF through redirects | Public-address validation on each request target | Host-network policy outside Smart Model Loader |
 | Concurrent load and deletion | Active-load counter, idle queue requirement, maintenance lock | Other extensions mutating model files directly |
 | Partial or corrupt persistence | Locked atomic JSON writes with fsync | Filesystem and hardware guarantees |
-| Accidental broad deletion | Exact template-selected target and transactional tombstones | Manual filesystem maintenance outside Eclipse |
+| Accidental broad deletion | Exact template-selected target and transactional tombstones | Manual filesystem maintenance outside Smart Model Loader |
 | Event-loop or resource exhaustion | Worker offload plus request, header, redirect, file-size, and disk bounds | Deliberately permitted very large local model hashing |
 | Endpoint misuse | Same-origin checks and multi-user loopback restriction | Non-browser local processes already trusted by the host |
 
@@ -106,7 +106,7 @@ run" entries below apply only to the separate real-model qualification column;
 they do not mean that the deterministic contract tests were skipped. Real-model
 qualification is opt-in because it can require network access, large downloads,
 GPU memory, optional Python runtime packages, and production model weights.
-Eclipse vendors the required ComfyUI adapter code for Nunchaku and GGUF, so
+Smart Model Loader vendors the required ComfyUI adapter code for Nunchaku and GGUF, so
 separate ComfyUI-Nunchaku and ComfyUI-GGUF custom-node installations are not
 required.
 
@@ -114,13 +114,13 @@ required.
 | --- | --- | --- |
 | Standard checkpoint / UNet | Yes | Not run |
 | Nunchaku Flux / Qwen / ZImage | Validation and vendored adapter paths | Not run with real weights; requires the optional `nunchaku` Python package and a compatible NVIDIA GPU |
-| GGUF | Validation and vendored adapter paths | Not run with real weights; requires the `gguf` Python package declared by Eclipse |
+| GGUF | Validation and vendored adapter paths | Not run with real weights; requires the `gguf` Python package declared by Smart Model Loader |
 | External CLIP / VAE / audio VAE | Resolution and loader paths | Not run |
 | LoRA / sampling / BlockSwap | Shared adapter and policy paths | Not run with production weights |
 | CivitAI network download | Controlled HTTP/identity/resume/digest tests | No live CivitAI download run |
 | Linux / Windows / macOS | Platform-neutral path and persistence tests | Linux-only local validation; no cross-platform qualification |
 
 Operators qualifying a real configuration should record the ComfyUI version,
-Eclipse version, operating system, device, model identity and SHA-256, optional
+Smart Model Loader version, operating system, device, model identity and SHA-256, optional
 backend versions, load path, and observed result. A skipped entry is not a
 failure, but it must not be represented as qualified.

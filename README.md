@@ -1,8 +1,9 @@
 # ComfyUI Smart Model Loader
 
-Version 1.0.0 is the standalone home of Eclipse's six diffusion loader nodes
-and verified Download Manager. Install this directory beside
-`comfyui_eclipse` in `ComfyUI/custom_nodes` and restart ComfyUI.
+Version 1.0.1 provides a complete diffusion pipeline: secure model loading,
+text conditioning, pipe inspection, sampling, and the verified Download
+Manager. Install this repository in `ComfyUI/custom_nodes` and restart ComfyUI.
+ComfyUI Eclipse is optional.
 
 The node IDs remain unchanged, including their `[Eclipse]` suffixes, so saved
 workflows resolve without node replacement:
@@ -13,6 +14,11 @@ workflows resolve without node replacement:
 - CLIP Loader
 - VAE Loader
 - VAE Loader Video+Audio
+- CLIP Text Encode
+- CLIP Text Encode (Advanced)
+- Conditioning Zero Out
+- IO Checkpoint Loader
+- Eclipse KSampler (Pipe)
 
 The pack includes Nunchaku and GGUF adapters, loader templates, integrity
 metadata, CivitAI acquisition, and the CivitAI/Hugging Face Download Manager.
@@ -36,9 +42,15 @@ the destination has had a chance to preserve or migrate them.
 
 Guides:
 
+- [Pipeline nodes](Readme/Pipeline_Nodes.md)
 - [Smart Model Loader](Readme/Smart_Loaders.md)
 - [Focused loaders](Readme/Checkpoint_Loaders.md)
 - [Download Manager](Readme/Download_Manager.md)
 - [Security model](Readme/Model_Loader_Security.md)
+
+The unchanged `PIPE` dictionary can also be used with optional Eclipse nodes.
+Context Image, Generation Data, generic channel pipes, Concat Pipe Multi,
+Smart Sampler Settings, Save Images, Kargim, and Conditioning Passer remain
+Eclipse integrations and are not required by this pack.
 
 Licensed under Apache-2.0. See [LICENSE](LICENSE) and [NOTICE](NOTICE).

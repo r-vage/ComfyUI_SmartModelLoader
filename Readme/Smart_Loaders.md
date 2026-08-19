@@ -1,6 +1,6 @@
 # Smart Model Loader User Guide
 
-The unified model loader for ComfyUI_Eclipse — replaces the older Smart Loader Plus, Smart Loader, and Smart Loader Basic variants.
+The unified model loader in ComfyUI Smart Model Loader — compatible with workflows created by the earlier Eclipse-owned loader.
 
 ## Table of Contents
 - [Overview](#overview)
@@ -39,7 +39,7 @@ The **Smart Model Loader** changes this by packaging all model-level and generat
 
 ### The Pipe Workflow Philosophy
 
-Eclipse operates on a **Pipe-based workflow**. Instead of wiring a dozen individual lines (model, clip, VAE, latent, seed, CFG, etc.) across your canvas, everything is bundled into a single **PIPE** connection:
+The loader supports a **Pipe-based workflow**. Instead of wiring a dozen individual lines (model, clip, VAE, latent, seed, CFG, etc.) across your canvas, everything is bundled into a single **PIPE** connection:
 
 ```
 Smart Model Loader
@@ -140,7 +140,7 @@ Enable the **templates** chip to access the template system.
 
 ### How Templates Work
 
-Templates save your complete loader configuration to a JSON file in `ComfyUI_Eclipse/templates/` (also accessible via `models/Eclipse/templates/` junction).
+Templates save your complete loader configuration to `ComfyUI_SmartModelLoader/templates/`.
 
 **Saving:** Set `template_action` to "Save", enter a name in `new_template_name`, and execute. The template captures all current settings.
 
@@ -442,7 +442,7 @@ The Smart Model Loader outputs a single PIPE — use these dedicated nodes to ex
 
 **IO nodes** are bidirectional: they accept a pipe input plus optional direct inputs, merge them, and output both a combined pipe and individual value outputs. This lets you override specific pipe values mid-chain without breaking the pipe flow.
 
-**Concat Pipe Multi** merges 2–64 pipes into one. Use it to combine outputs from different sources (e.g., Smart Model Loader pipe + Smart Sampler Settings pipe).
+**IO Checkpoint Loader** is included here. Context Image, Generation Data, generic channel pipes, Concat Pipe Multi, and Smart Sampler Settings are optional ComfyUI Eclipse integrations.
 
 ---
 
@@ -450,7 +450,7 @@ The Smart Model Loader outputs a single PIPE — use these dedicated nodes to ex
 
 ### Basic Setup (Standard Checkpoint)
 
-1. Add **Smart Model Loader** from `Eclipse > Loader`
+1. Add **Smart Model Loader** from `Smart Model Loader > Loader`
 2. Chips `clip`, `vae`, `memory_cleanup` are already enabled
 3. Set `model_type` to "Standard Checkpoint"
 4. Select checkpoint from `ckpt_name`
@@ -518,7 +518,7 @@ The Smart Model Loader outputs a single PIPE — use these dedicated nodes to ex
 4. Reduce CLIP count, batch size, or resolution
 
 ### Template Won't Load
-- Check `ComfyUI_Eclipse/templates/` for the JSON file
+- Check `ComfyUI_SmartModelLoader/templates/` for the JSON file
 - Set `template_action` to "None" then back to "Load" to refresh
 - Re-create if file is corrupted
 

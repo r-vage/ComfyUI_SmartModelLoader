@@ -5,8 +5,8 @@ __all__ = ["TEXTS", "CATEGORY", "KEYS", "category_display"]
 
 
 class TEXTS(Enum):
-    CUSTOM_NODE_NAME = "Eclipse"
-    LOGGER_PREFIX = "Eclipse"
+    CUSTOM_NODE_NAME = "Smart Model Loader"
+    LOGGER_PREFIX = "Smart Model Loader"
     CONCAT = "concatenated"
     INACTIVE_MSG = "inactive"
     INVALID_METADATA_MSG = "Invalid metadata raw"
@@ -14,7 +14,7 @@ class TEXTS(Enum):
 
 
 class CATEGORY(Enum):
-    MAIN = "🌒 Eclipse"
+    MAIN = "🌒 Smart Model Loader"
     CONDITIONING = "/ Conditioning"
     CONVERSION = "/ Conversion"
     LOADER = "/ Loader"
