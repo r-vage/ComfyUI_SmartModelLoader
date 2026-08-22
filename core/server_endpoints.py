@@ -35,6 +35,7 @@ from .civitai_client import (
     resolve_file_for_download,
 )
 from .common import get_config_value, update_config_values
+from .config_store import DEFAULT_CHIP_COLOR, normalize_chip_color
 from .logger import log
 from .model_integrity import (
     integrity_key,
@@ -1101,6 +1102,12 @@ class StandaloneConfigEndpoints:
         @PromptServer.instance.routes.get("/smart-model-loader/config/all")
         async def get_all_config(_request):
             hf_configured, hf_source = get_auth_token_status("huggingface")
+            try:
+                chip_color = normalize_chip_color(
+                    get_config_value("chip_color", DEFAULT_CHIP_COLOR)
+                )
+            except ValueError:
+                chip_color = DEFAULT_CHIP_COLOR
             return web.json_response(
                 {
                     "log_level": get_config_value("log_level", "warning"),
@@ -1111,6 +1118,7 @@ class StandaloneConfigEndpoints:
                     "retry_download_attempts": get_config_value(
                         "retry_download_attempts", 2
                     ),
+                    "chip_color": chip_color,
                     "civitai_api_key_configured": bool(
                         get_config_value("civitai_api_key", "")
                     ),
@@ -1131,6 +1139,7 @@ class StandaloneConfigEndpoints:
                 "use_sliders",
                 "allow_legacy_model_formats",
                 "retry_download_attempts",
+                "chip_color",
                 "civitai_api_key",
                 "hf_token",
             }
@@ -1161,6 +1170,13 @@ class StandaloneConfigEndpoints:
                         return web.json_response(
                             {"success": False, "error": "Retries must be from 0 through 10"},
                             status=400,
+                        )
+                elif key == "chip_color":
+                    try:
+                        value = normalize_chip_color(value)
+                    except ValueError as error:
+                        return web.json_response(
+                            {"success": False, "error": str(error)}, status=400
                         )
                 elif not isinstance(value, str) or len(value) > 8192:
                     return web.json_response(

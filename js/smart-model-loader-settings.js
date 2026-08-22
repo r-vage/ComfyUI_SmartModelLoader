@@ -1,4 +1,9 @@
 import { app, api } from './comfy/index.js';
+import {
+    applyComboChipColor,
+    DEFAULT_COMBO_CHIP_COLOR,
+    normalizeComboChipColor,
+} from './eclipse-combo-chip.js';
 
 const PREFIX = '/smart-model-loader/config';
 const TOKEN_MASK = '••••••••';
@@ -35,12 +40,23 @@ app.registerExtension({
         } catch (error) {
             console.error('[Smart Model Loader] Failed to read settings:', error);
         }
+        const chipColor = applyComboChipColor(config.chip_color || DEFAULT_COMBO_CHIP_COLOR);
         const add = (setting) => appRef.ui.settings.addSetting(setting);
         add({
             id: 'SmartModelLoader.LogLevel', category: [...CATEGORY, 'LogLevel'], name: '📝 Log Level',
             type: 'combo', options: ['error', 'warning', 'info', 'debug'], defaultValue: config.log_level || 'warning',
             tooltip: 'Standalone loader and Download Manager logging verbosity.', sortOrder: 600,
             onChange: afterInitialChange((value) => update({ log_level: value })),
+        });
+        add({
+            id: 'SmartModelLoader.ChipColor', category: [...CATEGORY, 'ChipColor'], name: '🎨 Chip Color',
+            type: 'color', defaultValue: `#${chipColor}`,
+            tooltip: 'Accent color for loader chip bars and selected chips.', sortOrder: 550,
+            onChange: afterInitialChange(async (value) => {
+                const normalized = normalizeComboChipColor(value);
+                await update({ chip_color: normalized });
+                applyComboChipColor(normalized);
+            }),
         });
         add({
             id: 'SmartModelLoader.UseSliders', category: [...CATEGORY, 'UseSliders'], name: '🎚️ Use Sliders',

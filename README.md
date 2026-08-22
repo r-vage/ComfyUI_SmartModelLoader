@@ -4,7 +4,7 @@ A complete, pipe-first diffusion workflow for ComfyUI: load models, build text
 conditioning, sample, decode, and acquire verified model files without turning
 your canvas into a wall of connections.
 
-Version **1.0.1** includes eleven Nodes 2.0-ready nodes. ComfyUI Eclipse is
+Version **1.0.2** includes eleven Nodes 2.0-ready nodes. ComfyUI Eclipse is
 optional.
 
 ![Annotated Nodes 2.0 workflow connecting Smart Model Loader, IO Checkpoint Loader, CLIP encoders, and the pipe KSampler](Readme/assets/pipeline-overview.png)

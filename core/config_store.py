@@ -26,6 +26,18 @@ _CONFIG_CACHE_TTL = 5.0
 _config_cache: dict[str, Any] = {}
 _config_cache_time = 0.0
 _config_cache_lock = threading.RLock()
+DEFAULT_CHIP_COLOR = "2a5a3a"
+
+
+def normalize_chip_color(value: Any) -> str:
+    if not isinstance(value, str):
+        raise ValueError("Chip color must be a six-digit hexadecimal string")
+    normalized = value.strip().removeprefix("#").lower()
+    if len(normalized) != 6 or any(
+        character not in "0123456789abcdef" for character in normalized
+    ):
+        raise ValueError("Chip color must be a six-digit hexadecimal string")
+    return normalized
 
 
 def _fallback_config() -> dict[str, Any]:
@@ -34,6 +46,7 @@ def _fallback_config() -> dict[str, Any]:
             "description": "ComfyUI Smart Model Loader Configuration",
             "log_level_options": "error | warning | info | debug",
             "allow_legacy_model_formats": "Administrator-local override for pickle-capable .ckpt/.pt/.pth/.bin diffusion artifacts. Keep false unless the files are trusted.",
+            "chip_color": "Six-digit hexadecimal accent for loader chip bars and selected chips.",
         },
         "log_level": "warning",
         "retry_download_attempts": 2,
@@ -41,6 +54,7 @@ def _fallback_config() -> dict[str, Any]:
         "civitai_api_key": "",
         "allow_legacy_model_formats": False,
         "use_sliders": True,
+        "chip_color": DEFAULT_CHIP_COLOR,
     }
 
 

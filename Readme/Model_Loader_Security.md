@@ -1,6 +1,6 @@
 # Diffusion Model Loader Security
 
-ComfyUI Smart Model Loader 1.0.1 applies one security and lifecycle policy to Smart Model Loader,
+ComfyUI Smart Model Loader 1.0.2 applies one security and lifecycle policy to Smart Model Loader,
 Model Loader, Model Loader Pipe, the VAE loaders, loader templates, integrity
 operations, and CivitAI acquisition. Existing node IDs, sockets, pipe keys,
 workflow fields, and templates remain compatible. HTTP clients use the new

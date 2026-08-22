@@ -6,12 +6,14 @@
     "hf_token": "Optional Hugging Face token. It is stored only in private local config.json.",
     "allow_legacy_model_formats": "Administrator-local override for pickle-capable diffusion artifacts. Keep false unless files are trusted.",
     "retry_download_attempts": "Integrity retry count from 0 through 10.",
-    "use_sliders": "Render numeric loader controls as sliders where supported."
+    "use_sliders": "Render numeric loader controls as sliders where supported.",
+    "chip_color": "Six-digit hexadecimal accent for loader chip bars and selected chips."
   },
   "log_level": "warning",
   "civitai_api_key": "",
   "hf_token": "",
   "allow_legacy_model_formats": false,
   "retry_download_attempts": 2,
-  "use_sliders": true
+  "use_sliders": true,
+  "chip_color": "2a5a3a"
 }

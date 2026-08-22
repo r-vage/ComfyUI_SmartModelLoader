@@ -1,5 +1,30 @@
 # Changelog
 
+## 2026-08-22
+
+### Version: 1.0.2
+
+- **Feat**
+  - Add a persisted color picker for loader chip bars and selected chips, with derived hover, border, and contrast colors.
+  - Match loader combo-chip popup widths to their rendered trigger bars without stretching or shrinking individual chips.
+
+- **Fix**
+  - Set the Download Manager dialog background to `#3a3a3a`.
+
+**Changed files:**
+- `pyproject.toml`
+- `.defaults/config.json.example`
+- `.defaults/.manifest.json`
+- `core/config_store.py`
+- `core/server_endpoints.py`
+- `js/eclipse-combo-chip.js`
+- `js/smart-model-loader-download-manager.js`
+- `js/smart-model-loader-settings.js`
+- `README.md`
+- `Readme/Model_Loader_Security.md`
+- `tests/test_config_store.py` (new)
+- `tools/chip-color-harness.mjs` (new)
+
 ## 2026-08-19
 
 ### Version: 1.0.1
