@@ -2,6 +2,18 @@
 
 ## 2026-08-22
 
+### Version: 1.0.3
+
+- **Fix**
+  - Omit hidden `flux_guidance` defaults from Smart Model Loader pipes for Krea2 and other non-Flux model/CLIP combinations while retaining it for supported Flux and Flux2 loaders.
+
+**Changed files:**
+- `pyproject.toml`
+- `core/model_loader/pipes.py`
+- `core/model_loader/smart.py`
+- `Readme/Smart_Loaders.md`
+- `tests/test_pipeline_nodes.py`
+
 ### Version: 1.0.2
 
 - **Feat**

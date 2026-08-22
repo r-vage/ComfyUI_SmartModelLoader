@@ -79,7 +79,7 @@ The node uses a combo-chip widget at the top to control which configuration sect
 | `vae` | **on** | VAE source selection |
 | `audio_vae` | off | Video/audio dual VAE loading (e.g. LTXV/LTX2) |
 | `latent` | off | Resolution presets, custom dimensions, batch size |
-| `sampler` | off | Sampler, scheduler, steps, CFG, flux_guidance |
+| `sampler` | off | Sampler, scheduler, steps, CFG, and Flux guidance when applicable |
 | `lora` | off | Up to 3 LoRA slots |
 | `model_sampling` | off | Sampling method and architecture-specific parameters |
 | `block_swap` | off | GPU↔CPU block offloading |
@@ -419,7 +419,8 @@ Single **PIPE** output containing all loaded components:
 | `width`, `height` | INT | If latent chip enabled |
 | `batch_size` | INT | If latent chip enabled |
 | `sampler_name`, `scheduler` | STRING | If sampler chip enabled |
-| `steps`, `cfg`, `flux_guidance` | INT/FLOAT | If sampler chip enabled |
+| `steps`, `cfg` | INT/FLOAT | If sampler chip enabled |
+| `flux_guidance` | FLOAT | If sampler chip enabled and the selected model/CLIP combination exposes Flux guidance |
 | `seed` | INT | If seed chip enabled |
 | `model_name`, `vae_name` | STRING | Always |
 | `clip_skip` | INT | If clip chip enabled |

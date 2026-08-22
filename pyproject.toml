@@ -1,7 +1,7 @@
 [project]
 name = "ComfyUI_SmartModelLoader"
 description = "Complete ComfyUI diffusion pipeline with secure model loading, text conditioning, pipe sampling, and verified downloads."
-version = "1.0.2"
+version = "1.0.3"
 license = {file = "LICENSE"}
 dependencies = [
     "torch",

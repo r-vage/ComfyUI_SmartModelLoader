@@ -38,6 +38,7 @@ from ..nunchaku_wrapper import load_nunchaku_model
 from .integrity import verify_primary_model_integrity
 from .lifecycle import with_loader_execution
 from .loading import LoadRequest, LoadResult
+from .pipes import build_smart_sampler_fields
 
 _LOG_PREFIX = "Smart Model Loader"
 
@@ -718,6 +719,17 @@ def execute_smart_request(**kwargs):
             f"The model could not be loaded — ensure the file exists and is not corrupted. {ext_hint}"
         )
 
+    sampler_fields = build_smart_sampler_fields(
+        enabled=configure_sampler,
+        model_type=model_type,
+        clip_type=clip_type,
+        sampler_name=sampler_name,
+        scheduler=scheduler,
+        steps=steps,
+        cfg=cfg,
+        flux_guidance=flux_guidance,
+    )
+
     pipe = build_pipe(
         model=loaded_model,
         model_name=checkpoint_name,
@@ -751,13 +763,7 @@ def execute_smart_request(**kwargs):
             if (is_standard and use_baked_clip and enable_clip_layer)
             else OMIT
         ),
-        configure_sampler=configure_sampler,
-        sampler_name=sampler_name if configure_sampler else OMIT,
-        scheduler=scheduler if configure_sampler else OMIT,
-        steps=steps if configure_sampler else OMIT,
-        cfg=cfg if configure_sampler else OMIT,
-        flux_guidance=flux_guidance if configure_sampler else OMIT,
-        _allow_overwrite=False if configure_sampler else OMIT,
+        **sampler_fields,
         seed=seed if configure_seed else OMIT,
     )
 
