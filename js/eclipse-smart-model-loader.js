@@ -29,6 +29,10 @@ import {
     getModelPrecisionOptions,
     reconcileFilenameFreeLocators,
 } from './eclipse-smart-model-loader-options.js';
+import {
+    classifyIntegrityVerifyResult,
+    resolveIntegrityUiState,
+} from './smart-model-loader-integrity-flow.js';
 const NODE_NAME = 'Smart Model Loader [Eclipse]';
 const SPECIAL_SEEDS = [-1, -2, -3];
 const FEATURE_OPTIONS = [
@@ -830,8 +834,13 @@ app.registerExtension({
                         }),
                     });
                     const result = await resp.json();
-                    if (result?.success) {
-                        const s = result.status;
+                    const verifyOutcome = classifyIntegrityVerifyResult(result);
+                    if (verifyOutcome === 'mismatch') {
+                        setFileStatus(target, 'mismatch');
+                        downloadButton.name = '✗ Hash mismatch';
+                        console.warn(`[Smart Model Loader] ${target}: expected ${result.expected}, got ${result.actual}`);
+                    } else if (result?.success) {
+                        const s = verifyOutcome;
 
                         // Fallback Sync: If the user didn't provide a hash but the server verified 
                         // against one (e.g. from the .eclipse.json sidecar), sync it to the UI and map.
@@ -848,10 +857,6 @@ app.registerExtension({
                         if (s === 'ok') {
                             setFileStatus(target, 'verified');
                             downloadButton.name = '✓ Verified';
-                        } else if (s === 'mismatch') {
-                            setFileStatus(target, 'mismatch');
-                            downloadButton.name = '✗ Hash mismatch';
-                            console.warn(`[Smart Model Loader] ${target}: expected ${result.expected}, got ${result.actual}`);
                         } else if (s === 'no-expected' && result.actual) {
                             setFileStatus(target, 'hashed');
                             downloadButton.name = '✓ Hashed';
@@ -1453,20 +1458,28 @@ app.registerExtension({
                 const isGGUF = mt === 'GGUF Model';
                 const d = (name, show) => vis.setVisible(name, show);
 
-                // Integrity controls: hide behind the 'integrity' chip unless a file is missing
+                // Integrity controls: reveal recovery for a missing or mismatched active file.
                 const missingActiveFiles = getMissingActiveFiles();
-                const isTargetEmpty = !getActiveModelTarget() || getActiveModelTarget() === 'None';
+                const selectedTarget = getActiveModelTarget();
+                const selectedPresent = isSelectedFilePresent();
+                const selectedMismatch = selectedPresent && selectedTarget && getFileStatus(selectedTarget) === 'mismatch';
+                const isTargetEmpty = !selectedTarget || selectedTarget === 'None';
                 const hasPendingLocators = isTargetEmpty && parseDownloadLocators().some((x) => x && x.target_role && (x.air || x.sha256));
-
-                const forceIntegrity = missingActiveFiles.length > 0 || hasPendingLocators;
-                if (forceIntegrity && gv('verify_file') !== 'verify') {
-                    sv('verify_file', 'verify');
-                }
-                const verifyMode = gv('verify_file') || 'off';
-
                 const hasIntegrityChip = feats.has('integrity');
-                const showIntegrityBlock = hasIntegrityChip || forceIntegrity;
-                const revealIntegrityEditor = showIntegrityBlock && verifyMode !== 'off';
+                const requestedVerifyMode = gv('verify_file') || 'off';
+                const integrityUi = resolveIntegrityUiState({
+                    hasIntegrityChip,
+                    missingCount: missingActiveFiles.length,
+                    hasPendingLocators,
+                    selectedMismatch,
+                    requestedMode: requestedVerifyMode,
+                });
+                if (requestedVerifyMode !== integrityUi.verifyMode) {
+                    sv('verify_file', integrityUi.verifyMode);
+                }
+                const verifyMode = integrityUi.verifyMode;
+                const showIntegrityBlock = integrityUi.showIntegrityBlock;
+                const revealIntegrityEditor = integrityUi.revealIntegrityEditor;
                 const isVerifyMode = verifyMode === 'verify';
 
                 d('verify_file', showIntegrityBlock);
@@ -1597,10 +1610,7 @@ app.registerExtension({
 
                 const locatorRole = (gv('download_target_role') || '').trim();
                 const editorValue = (gv('air_or_hash') || '').trim();
-                const selectedTarget = getActiveModelTarget();
-                const selectedPresent = isSelectedFilePresent();
                 // Present file → Verify (unless it has a mismatch, then Re-download); missing → Download.
-                const selectedMismatch = selectedPresent && selectedTarget && getFileStatus(selectedTarget) === 'mismatch';
                 const selectedVerified = selectedPresent && selectedTarget && getFileStatus(selectedTarget) === 'verified';
                 const selectedHashed = selectedPresent && selectedTarget && getFileStatus(selectedTarget) === 'hashed';
                 const verifyMethod = revealIntegrityEditor && !!selectedTarget && selectedPresent && !selectedMismatch;

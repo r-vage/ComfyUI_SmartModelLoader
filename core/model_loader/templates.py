@@ -151,7 +151,7 @@ def load_template(name: str) -> dict[str, Any]:
         if target.stat().st_size > MAX_TEMPLATE_BYTES:
             raise ValueError("Template exceeds the size limit")
         return _ensure_template_compat(
-            normalize_template_paths(read_json_object(target))
+            normalize_template_paths(read_json_object(target)),
         )
     except FileNotFoundError:
         return {}

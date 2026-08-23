@@ -19,7 +19,7 @@ def validate_public_http_url(url: str) -> ParseResult:
         raise ValueError("URLs containing credentials are not supported")
 
     try:
-        parsed.port
+        _ = parsed.port
     except ValueError as e:
         raise ValueError("URL contains an invalid port") from e
 

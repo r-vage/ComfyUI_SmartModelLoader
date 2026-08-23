@@ -1,13 +1,11 @@
-"""
-This module wraps the ComfyUI model patcher for Nunchaku models to load and unload the model correctly.
+"""This module wraps the ComfyUI model patcher for Nunchaku models to load and unload the model correctly.
 """
 
 from comfy.model_patcher import ModelPatcher
 
 
 class NunchakuModelPatcher(ModelPatcher):
-    """
-    This class extends the ComfyUI ModelPatcher to provide custom logic for loading and unloading the model correctly.
+    """This class extends the ComfyUI ModelPatcher to provide custom logic for loading and unloading the model correctly.
     """
 
     def load(
@@ -17,8 +15,7 @@ class NunchakuModelPatcher(ModelPatcher):
         force_patch_weights=False,
         full_load=False,
     ):
-        """
-        Load the diffusion model onto the specified device.
+        """Load the diffusion model onto the specified device.
 
         Parameters
         ----------
@@ -30,18 +27,19 @@ class NunchakuModelPatcher(ModelPatcher):
             Not used in this implementation.
         full_load : bool, optional
             Not used in this implementation.
+
         """
         with self.use_ejected():
             self.model.diffusion_model.to_safely(device_to)
 
     def detach(self, unpatch_all: bool = True):
-        """
-        Detach the model and move it to the offload device.
+        """Detach the model and move it to the offload device.
 
         Parameters
         ----------
         unpatch_all : bool, optional
             If True, unpatch all model components (default is True).
+
         """
         self.eject_model()
         self.model.diffusion_model.to_safely(self.offload_device)

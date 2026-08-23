@@ -305,7 +305,7 @@ def _request_model_page_payload(
                 redirected_url = urljoin(current_url, location)
                 parsed_redirect = urlparse(redirected_url)
                 redirect_versions = parse_qs(parsed_redirect.query).get(
-                    "modelVersionId"
+                    "modelVersionId",
                 )
                 if (
                     parsed_redirect.scheme != "https"
@@ -558,7 +558,7 @@ def _precision_aware_filename(
         item is not selected
         and str(item.get("id")) != str(selected_id)
         and PurePosixPath(
-            str(item.get("name") or "").replace("\\", "/")
+            str(item.get("name") or "").replace("\\", "/"),
         ).name.casefold()
         == filename.casefold()
         and _file_precision_label(item) == precision
@@ -604,7 +604,7 @@ def resolve_civitai_version_filenames(
         except (TypeError, ValueError):
             continue
         source_filename = PurePosixPath(
-            str(file_data.get("name") or "").replace("\\", "/")
+            str(file_data.get("name") or "").replace("\\", "/"),
         ).name
         if not source_filename or source_filename in {".", ".."}:
             continue
@@ -923,7 +923,7 @@ def resolve_file_for_download(
     if sha256 and not hmac.compare_digest(resolved_sha, sha256.strip().lower()):
         raise ValueError("CivitAI SHA-256 does not match the requested identity")
     filename = PurePosixPath(
-        str(selected.get("name") or "").replace("\\", "/")
+        str(selected.get("name") or "").replace("\\", "/"),
     ).name
     if not filename or filename in {".", ".."}:
         raise ValueError("CivitAI response omitted a safe filename")
@@ -1159,7 +1159,7 @@ def _download_file_locked(
             _provider_digest_file(
                 destination,
                 progress_cb=lambda processed, total: _notify_phase(
-                    phase_cb, "verifying", processed, total
+                    phase_cb, "verifying", processed, total,
                 ),
                 algorithm=digest_algorithm,
             ),
@@ -1186,7 +1186,7 @@ def _download_file_locked(
                         _provider_digest_file(
                             staging,
                             progress_cb=lambda processed, total: _notify_phase(
-                                phase_cb, "hashing", processed, total
+                                phase_cb, "hashing", processed, total,
                             ),
                             algorithm=digest_algorithm,
                         ),
@@ -1258,7 +1258,7 @@ def _download_file_locked(
                 tolerance = max(4096, int(expected_size * 0.01))
                 if abs(predicted_total - expected_size) > tolerance:
                     raise ValueError(
-                        f"Download size conflicts with {provider_name} metadata"
+                        f"Download size conflicts with {provider_name} metadata",
                     )
             required = (content_length or max((expected_size or 0) - partial_size, 0)) + MIN_FREE_RESERVE_BYTES
             if shutil.disk_usage(destination.parent).free < required:
@@ -1302,7 +1302,7 @@ def _download_file_locked(
         actual = _provider_digest_file(
             staging,
             progress_cb=lambda processed, total: _notify_phase(
-                phase_cb, "hashing", processed, total
+                phase_cb, "hashing", processed, total,
             ),
             algorithm=digest_algorithm,
         )

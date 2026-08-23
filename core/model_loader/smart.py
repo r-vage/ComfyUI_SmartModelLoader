@@ -35,7 +35,7 @@ from ..model_loader_common import (
     load_custom_vae,
 )
 from ..nunchaku_wrapper import load_nunchaku_model
-from .integrity import verify_primary_model_integrity
+from .integrity import resolve_integrity_mode, verify_primary_model_integrity
 from .lifecycle import with_loader_execution
 from .loading import LoadRequest, LoadResult
 from .pipes import build_smart_sampler_fields
@@ -63,13 +63,10 @@ def execute_smart_request(**kwargs):
     configure_seed = "seed" in selected_set
 
     # Extract all parameters
-    verify_integrity = str(kwargs.get("verify_file") or "off")
+    verify_integrity = resolve_integrity_mode(selected_set, kwargs.get("verify_file"))
     expected_hashes_raw = kwargs.get("expected_hashes", {})
     air_or_hash = str(kwargs.get("air_or_hash", "") or "").strip()
     _download_locators_raw = kwargs.get("download_locators", [])
-
-    if verify_integrity not in {"off", "sidecar", "verify"}:
-        verify_integrity = "off"
 
     expected_hashes: dict[str, Any] = {}
     if isinstance(expected_hashes_raw, dict):
@@ -256,7 +253,7 @@ def execute_smart_request(**kwargs):
 
         if not NUNCHAKU_AVAILABLE:
             raise RuntimeError(
-                "Nunchaku support not available — install the 'nunchaku' pip package"
+                "Nunchaku support not available — install the 'nunchaku' pip package",
             )
         log.msg("Nunchaku Flux", f"Loading quantized model: {nunchaku_name}")
         loaded_model = load_nunchaku_model(
@@ -292,7 +289,7 @@ def execute_smart_request(**kwargs):
 
         if not NUNCHAKU_AVAILABLE:
             raise RuntimeError(
-                "Nunchaku support not available — install the 'nunchaku' pip package"
+                "Nunchaku support not available — install the 'nunchaku' pip package",
             )
         checkpoint_name = qwen_name
         loaded_model = load_nunchaku_model(
@@ -312,7 +309,7 @@ def execute_smart_request(**kwargs):
         zimage_path = str(request.files["zimage_name"].path)
         if not zimage_path or not os.path.isfile(zimage_path):
             raise FileNotFoundError(
-                f"Nunchaku ZImage model not found: {zimage_name}"
+                f"Nunchaku ZImage model not found: {zimage_name}",
             )
 
         _, ext = os.path.splitext(zimage_path.lower())
@@ -327,7 +324,7 @@ def execute_smart_request(**kwargs):
 
         if not NUNCHAKU_AVAILABLE:
             raise RuntimeError(
-                "Nunchaku support not available — install the 'nunchaku' pip package"
+                "Nunchaku support not available — install the 'nunchaku' pip package",
             )
         checkpoint_name = zimage_name
         loaded_model = load_nunchaku_model(
@@ -356,7 +353,7 @@ def execute_smart_request(**kwargs):
 
         if not GGUF_AVAILABLE:
             raise RuntimeError(
-                "GGUF support not available — install the 'gguf' pip package"
+                "GGUF support not available — install the 'gguf' pip package",
             )
         checkpoint_name = gguf_name
         loaded_model = load_gguf_model(
@@ -412,13 +409,14 @@ def execute_smart_request(**kwargs):
             elif weight_dtype == "fp8_e5m2":
                 model_options["dtype"] = torch.float8_e5m2
             loaded_model = comfy.sd.load_diffusion_model(
-                unet_path, model_options=model_options
+                unet_path, model_options=model_options,
             )
             checkpoint_name = unet_name
 
     else:
         raise ValueError(
-            "Invalid model_type. Choose 'Standard Checkpoint', 'UNet Model', 'Nunchaku Flux', 'Nunchaku Qwen', 'Nunchaku ZImage', or 'GGUF Model'"
+            "Invalid model_type. Choose 'Standard Checkpoint', 'UNet Model', "
+            "'Nunchaku Flux', 'Nunchaku Qwen', 'Nunchaku ZImage', or 'GGUF Model'",
         )
 
     # ============================================================
@@ -449,7 +447,7 @@ def execute_smart_request(**kwargs):
                     loaded_clip = base_clip
             else:
                 log.warning(
-                    _LOG_PREFIX, "Baked CLIP requested but not found in checkpoint"
+                    _LOG_PREFIX, "Baked CLIP requested but not found in checkpoint",
                 )
 
         else:
@@ -480,7 +478,8 @@ def execute_smart_request(**kwargs):
                     if model_file_path.lower().endswith(".gguf"):
                         log.warning(
                             _LOG_PREFIX,
-                            "GGUF model files can't be combined into CLIP loading; ignoring model file. Use a standalone projection file instead.",
+                            "GGUF model files can't be combined into CLIP loading; "
+                            "ignoring model file. Use a standalone projection file instead.",
                         )
                     else:
                         clip_paths.append(model_file_path)
@@ -491,12 +490,13 @@ def execute_smart_request(**kwargs):
                 else:
                     log.warning(
                         _LOG_PREFIX,
-                        "'External + Model File' selected but no Standard Checkpoint / UNet file is available to combine with CLIP",
+                        "'External + Model File' selected but no Standard Checkpoint / "
+                        "UNet file is available to combine with CLIP",
                     )
 
             if not clip_paths:
                 raise ValueError(
-                    "No valid CLIP files found. Please select at least one CLIP model"
+                    "No valid CLIP files found. Please select at least one CLIP model",
                 )
 
             # Resolve clip type dynamically to prevent AttributeError on older ComfyUI installations
@@ -517,7 +517,7 @@ def execute_smart_request(**kwargs):
             if has_gguf_clip:
                 if not GGUF_AVAILABLE:
                     raise ImportError(
-                        "GGUF text encoder selected but GGUF support is not available. Install the 'gguf' pip package."
+                        "GGUF text encoder selected but GGUF support is not available. Install the 'gguf' pip package.",
                     )
                 loaded_clip = load_gguf_clip(
                     clip_paths=clip_paths,
@@ -551,10 +551,10 @@ def execute_smart_request(**kwargs):
                     raise ValueError(
                         "Cannot create latent: Model has no baked VAE. "
                         "Please enable 'vae' feature and set vae_source to 'External', "
-                        "or disable 'latent' feature."
+                        "or disable 'latent' feature.",
                     )
                 log.warning(
-                    _LOG_PREFIX, "Baked VAE requested but not found in model"
+                    _LOG_PREFIX, "Baked VAE requested but not found in model",
                 )
 
         elif configure_vae and not use_baked_vae:
@@ -585,27 +585,27 @@ def execute_smart_request(**kwargs):
                 if loaded_audio_vae is None:
                     log.warning(
                         _LOG_PREFIX,
-                        f"No baked audio VAE (audio_vae./vocoder. keys) found in '{os.path.basename(baked_model_path)}'",
+                        "No baked audio VAE (audio_vae./vocoder. keys) found in "
+                        f"'{os.path.basename(baked_model_path)}'",
                     )
             else:
                 log.warning(
                     _LOG_PREFIX,
                     "Baked audio VAE requires a Standard Checkpoint or UNet Model file - select 'External' instead",
                 )
+        # External audio VAE file (ships as a checkpoint).
+        elif audio_vae_name in (None, "", "None"):
+            log.warning(
+                _LOG_PREFIX, "External audio VAE requested but none selected",
+            )
         else:
-            # External audio VAE file (ships as a checkpoint).
-            if audio_vae_name in (None, "", "None"):
+            audio_vae_path = request.files["audio_vae_name"].path
+            loaded_audio_vae = load_audio_vae_from_path(str(audio_vae_path))
+            if loaded_audio_vae is None:
                 log.warning(
-                    _LOG_PREFIX, "External audio VAE requested but none selected"
+                    _LOG_PREFIX,
+                    f"No audio VAE weights (audio_vae./vocoder. keys) found in '{audio_vae_name}'",
                 )
-            else:
-                audio_vae_path = request.files["audio_vae_name"].path
-                loaded_audio_vae = load_audio_vae_from_path(str(audio_vae_path))
-                if loaded_audio_vae is None:
-                    log.warning(
-                        _LOG_PREFIX,
-                        f"No audio VAE weights (audio_vae./vocoder. keys) found in '{audio_vae_name}'",
-                    )
 
     # ============================================================
     # STEP 4: Apply LoRAs
@@ -620,7 +620,7 @@ def execute_smart_request(**kwargs):
     if lora_params:
         log.msg("LoRA", f"Applying {len(lora_params)} LoRA(s)...")
         loaded_model, loaded_clip = apply_loras(
-            loaded_model, loaded_clip, lora_params
+            loaded_model, loaded_clip, lora_params,
         )
 
     lora_string = format_lora_string(lora_params)
@@ -716,7 +716,7 @@ def execute_smart_request(**kwargs):
             ext_hint = ""
         raise RuntimeError(
             f"Failed to load {model_type} model. Check the console log above for details.\n"
-            f"The model could not be loaded — ensure the file exists and is not corrupted. {ext_hint}"
+            f"The model could not be loaded — ensure the file exists and is not corrupted. {ext_hint}",
         )
 
     sampler_fields = build_smart_sampler_fields(

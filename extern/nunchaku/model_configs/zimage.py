@@ -1,12 +1,12 @@
-"""
-This module provides a wrapper for ComfyUI's Z-Image model configuration.
+"""This module provides a wrapper for ComfyUI's Z-Image model configuration.
 
-Note
+Note:
 ----
 Codes are adapted from:
  - https://github.com/comfyanonymous/ComfyUI/blob/master/comfy/model_detection.py#model_config_from_unet
  - https://github.com/comfyanonymous/ComfyUI/blob/master/comfy/supported_models.py#ZImage
  - https://github.com/comfyanonymous/ComfyUI/blob/master/comfy/model_base.py#Lumina2
+
 """
 
 import torch
@@ -17,8 +17,7 @@ from ..models.zimage import patch_model
 
 
 class NunchakuZImage(ZImageModelConfig):
-    """
-    Nunchaku Z-Image model_config.
+    """Nunchaku Z-Image model_config.
     """
 
     _DIT_CONFIG_ = {
@@ -42,7 +41,7 @@ class NunchakuZImage(ZImageModelConfig):
     }
 
     def __init__(
-        self, rank: int = 32, precision: str = "int4", skip_refiners: bool = False
+        self, rank: int = 32, precision: str = "int4", skip_refiners: bool = False,
     ):
         super().__init__(unet_config=self._DIT_CONFIG_)
         self.rank = rank
@@ -54,10 +53,9 @@ class NunchakuZImage(ZImageModelConfig):
         state_dict: dict[str, torch.Tensor],
         prefix: str = "",
         device=None,
-        **kwargs
+        **kwargs,
     ) -> Lumina2:
-        """
-        Instantiate and return a Nunchaku optimized Lumina2 model_base object.
+        """Instantiate and return a Nunchaku optimized Lumina2 model_base object.
 
         Parameters
         ----------
@@ -74,6 +72,7 @@ class NunchakuZImage(ZImageModelConfig):
         -------
         model_base.Lumina2
             Instantiated model_base.Lumina2 object with Nunchaku quantized transformer blocks.
+
         """
         out: Lumina2 = super().get_model(state_dict, prefix, device)
         patch_model(
@@ -81,6 +80,6 @@ class NunchakuZImage(ZImageModelConfig):
             skip_refiners=self.skip_refiners,
             rank=self.rank,
             precision=self.precision,
-            **kwargs
+            **kwargs,
         )
         return out

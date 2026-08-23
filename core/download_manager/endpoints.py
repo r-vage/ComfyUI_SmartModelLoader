@@ -122,7 +122,7 @@ def _job_ids(payload: dict[str, Any]) -> list[str]:
         or not all(isinstance(value, str) and 1 <= len(value) <= 64 for value in values)
     ):
         raise ValueError(
-            f"Select between 1 and {_MAX_QUEUE_BATCH} valid download jobs"
+            f"Select between 1 and {_MAX_QUEUE_BATCH} valid download jobs",
         )
     return list(dict.fromkeys(values))
 
@@ -227,7 +227,7 @@ def initialize_endpoints() -> None:
             locator = _bounded_string(payload.get("locator"), "Locator", 2048, required=True)
             revision = _bounded_string(payload.get("revision"), "Revision", 256) or None
             metadata, rows = await asyncio.to_thread(
-                inspect_provider, provider, locator, revision
+                inspect_provider, provider, locator, revision,
             )
             inspection_id = _INSPECTIONS.add(metadata, rows)
             options = {
@@ -263,7 +263,7 @@ def initialize_endpoints() -> None:
         try:
             payload = await read_json_object_request(request)
             inspection_id = _bounded_string(
-                payload.get("inspection_id"), "Inspection ID", 64, required=True
+                payload.get("inspection_id"), "Inspection ID", 64, required=True,
             )
             inspection = _INSPECTIONS.get(inspection_id)
             selection = payload.get("selection")
@@ -339,7 +339,7 @@ def initialize_endpoints() -> None:
                     "success": True,
                     "removed_job_ids": removed,
                     "jobs": manager.snapshot()["jobs"],
-                }
+                },
             )
         except Exception as error:  # noqa: BLE001 - endpoint reports bounded validation errors
             return _error_response(error)
@@ -366,7 +366,7 @@ def initialize_endpoints() -> None:
             job_uuid = _bounded_string(payload.get("job_uuid"), "Job UUID", 64, required=True)
             removed_bytes = get_manager().discard_partial(job_uuid)
             return web.json_response(
-                {"success": True, "removed_bytes": removed_bytes}
+                {"success": True, "removed_bytes": removed_bytes},
             )
         except Exception as error:  # noqa: BLE001 - endpoint reports bounded validation errors
             return _error_response(error)

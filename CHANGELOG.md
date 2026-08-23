@@ -1,5 +1,77 @@
 # Changelog
 
+## 2026-08-23
+
+### Version: 1.0.4
+
+- **Fix**
+  - Bundle the missing `Krea2_GPT` Smart Model Loader template used by iGEN Simple, including verified CivitAI acquisition metadata for its primary diffusion model.
+  - Isolate bundled GGUF/Nunchaku mutable defaults, correct GGUF tokenizer model-type assignment, bind replacement callbacks to their intended blocks, and preserve causal exception chains.
+  - Ignore stale hidden integrity modes during execution and expose verified CivitAI re-download recovery when a present model file has a hash mismatch.
+  - Update the copied pipe sampler's tiled-decode controls immediately in classic and Nodes 2.0 views when `tiled_decode` changes.
+
+- **Refactor**
+  - Modernize tracked first-party and bundled Python imports, typing syntax, collections, dictionary iteration, control flow, and formatting without changing node IDs, schemas, routes, or loader contracts.
+
+- **Chore**
+  - Enable Ruff's complete rule set for tracked Python with documented, scoped exceptions for ComfyUI callbacks, serialized identifiers, hardware orchestration, and maintained bundled integrations.
+
+**Changed files:**
+- `.defaults/.manifest.json`
+- `.defaults/templates/Krea2_GPT.json.example` (new)
+- `pyproject.toml`
+- `core/common.py`
+- `core/config_store.py`
+- `core/download_manager/endpoints.py`
+- `core/download_manager/manager.py`
+- `core/download_manager/providers.py`
+- `core/gguf_wrapper.py`
+- `core/json_store.py`
+- `core/keys.py`
+- `core/logger.py`
+- `core/migration.py`
+- `core/model_loader/acquisition.py`
+- `core/model_loader/endpoints.py`
+- `core/model_loader/integrity.py`
+- `core/model_loader/lifecycle.py`
+- `core/model_loader/smart.py`
+- `core/model_loader/templates.py`
+- `core/model_loader/validation.py`
+- `core/model_loader_common.py`
+- `core/network_security.py`
+- `core/nunchaku_wrapper.py`
+- `core/server_endpoints.py`
+- `extern/gguf/__init__.py`
+- `extern/gguf/dequant.py`
+- `extern/gguf/loader.py`
+- `extern/gguf/nodes.py`
+- `extern/gguf/ops.py`
+- `extern/gguf/tools/convert.py`
+- `extern/nunchaku/__init__.py`
+- `extern/nunchaku/mixins/model.py`
+- `extern/nunchaku/model_base/qwenimage.py`
+- `extern/nunchaku/model_configs/qwenimage.py`
+- `extern/nunchaku/model_configs/zimage.py`
+- `extern/nunchaku/model_patcher/common.py`
+- `extern/nunchaku/model_patcher/zimage.py`
+- `extern/nunchaku/models/qwenimage.py`
+- `extern/nunchaku/models/zimage.py`
+- `extern/nunchaku/wrappers/flux.py`
+- `js/eclipse-smart-model-loader.js`
+- `js/eclipse-sampler-tiled-decode.js`
+- `js/smart-model-loader-integrity-flow.js` (new)
+- `py/RvCond_CLIPTextEncode.py`
+- `py/RvCond_CLIPTextEncodeAdvanced.py`
+- `py/RvCond_ConditioningZeroOut.py`
+- `py/RvLoader_ClipLoader.py`
+- `py/RvLoader_SmartModelLoader.py`
+- `py/RvLoader_VaeLoaderVideoAudio.py`
+- `py/RvPipe_IO_CheckpointLoader.py`
+- `py/RvSampler_KSamplerPipe.py`
+- `tests/test_integrity_flow.py` (new)
+- `tools/pipeline-frontend-harness.mjs`
+- `workflows/iGEN_Simple.json` (new)
+
 ## 2026-08-22
 
 ### Version: 1.0.3

@@ -36,15 +36,15 @@ from comfy_api.latest import ComfyExtension, io  # type: ignore
 
 class SmartModelLoaderExtension(ComfyExtension):
     async def get_node_list(self) -> list[type[io.ComfyNode]]:
+        from .py.RvCond_CLIPTextEncode import RvCond_CLIPTextEncode
+        from .py.RvCond_CLIPTextEncodeAdvanced import RvCond_CLIPTextEncodeAdvanced
+        from .py.RvCond_ConditioningZeroOut import RvCond_ConditioningZeroOut
         from .py.RvLoader_ClipLoader import RvLoader_ClipLoader
         from .py.RvLoader_ModelLoader import RvLoader_ModelLoader
         from .py.RvLoader_ModelLoaderPipe import RvLoader_ModelLoaderPipe
         from .py.RvLoader_SmartModelLoader import RvLoader_SmartModelLoader
         from .py.RvLoader_VaeLoader import RvLoader_VaeLoader
         from .py.RvLoader_VaeLoaderVideoAudio import RvLoader_VaeLoaderVideoAudio
-        from .py.RvCond_CLIPTextEncode import RvCond_CLIPTextEncode
-        from .py.RvCond_CLIPTextEncodeAdvanced import RvCond_CLIPTextEncodeAdvanced
-        from .py.RvCond_ConditioningZeroOut import RvCond_ConditioningZeroOut
         from .py.RvPipe_IO_CheckpointLoader import RvPipe_IO_CheckpointLoader
         from .py.RvSampler_KSamplerPipe import RvSampler_KSamplerPipe
 

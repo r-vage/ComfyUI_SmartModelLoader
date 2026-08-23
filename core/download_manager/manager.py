@@ -411,7 +411,7 @@ class DownloadQueueManager:
                             assignment,
                             persist=False,
                             publish=False,
-                        )
+                        ),
                     )
                 self._persist_locked()
             except Exception:
@@ -422,7 +422,7 @@ class DownloadQueueManager:
         return jobs
 
     def bundle_item_pair(
-        self, item: dict[str, Any]
+        self, item: dict[str, Any],
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         identity = item.get("provider_identity")
         destination = item.get("destination")
@@ -848,7 +848,7 @@ class DownloadQueueManager:
                     "expected_digest": job["expected_digest"],
                     "local_sha256": job.get("local_sha256"),
                     "conflict_policy": job["conflict_policy"],
-                }
+                },
             )
         return {"schema_version": _BUNDLE_SCHEMA_VERSION, "kind": "eclipse-download-bundle", "items": items}
 

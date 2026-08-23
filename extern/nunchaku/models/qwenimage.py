@@ -1,5 +1,4 @@
-"""
-This module implements the Nunchaku Qwen-Image model and related components.
+"""This module implements the Nunchaku Qwen-Image model and related components.
 
 .. note::
 
@@ -12,7 +11,6 @@ This module implements the Nunchaku Qwen-Image model and related components.
 """
 
 import gc
-from typing import Optional, Tuple
 
 import torch
 from comfy.ldm.flux.layers import EmbedND
@@ -40,8 +38,7 @@ from ..mixins.model import NunchakuModelMixin
 
 
 class NunchakuGELU(GELU):
-    """
-    GELU activation with a quantized linear projection.
+    """GELU activation with a quantized linear projection.
 
     Parameters
     ----------
@@ -59,6 +56,7 @@ class NunchakuGELU(GELU):
         Device for the projection.
     **kwargs
         Additional arguments for the quantized linear layer.
+
     """
 
     def __init__(
@@ -73,14 +71,13 @@ class NunchakuGELU(GELU):
     ):
         super(GELU, self).__init__()
         self.proj = SVDQW4A4Linear(
-            dim_in, dim_out, bias=bias, torch_dtype=dtype, device=device, **kwargs
+            dim_in, dim_out, bias=bias, torch_dtype=dtype, device=device, **kwargs,
         )
         self.approximate = approximate
 
 
 class NunchakuFeedForward(FeedForward):
-    """
-    Feed-forward network with fused quantized layers and optional fused GELU-MLP.
+    """Feed-forward network with fused quantized layers and optional fused GELU-MLP.
 
     Parameters
     ----------
@@ -102,6 +99,7 @@ class NunchakuFeedForward(FeedForward):
         Device for the projections.
     **kwargs
         Additional arguments for the quantized linear layers.
+
     """
 
     def __init__(
@@ -131,7 +129,7 @@ class NunchakuFeedForward(FeedForward):
                 dtype=dtype,
                 device=device,
                 **kwargs,
-            )
+            ),
         )
         self.net.append(nn.Dropout(dropout))
         self.net.append(
@@ -144,12 +142,11 @@ class NunchakuFeedForward(FeedForward):
                 torch_dtype=dtype,
                 device=device,
                 **kwargs,
-            )
+            ),
         )
 
     def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
-        """
-        Forward pass for the feed-forward network.
+        """Forward pass for the feed-forward network.
 
         Parameters
         ----------
@@ -160,19 +157,18 @@ class NunchakuFeedForward(FeedForward):
         -------
         torch.Tensor
             Output tensor after feed-forward transformation.
+
         """
         if isinstance(self.net[0], NunchakuGELU):
             return fused_gelu_mlp(hidden_states, self.net[0].proj, self.net[2])
-        else:
-            # Fallback to original implementation
-            for module in self.net:
-                hidden_states = module(hidden_states)
-            return hidden_states
+        # Fallback to original implementation
+        for module in self.net:
+            hidden_states = module(hidden_states)
+        return hidden_states
 
 
 class Attention(nn.Module):
-    """
-    Double-stream attention module for joint image-text attention.
+    """Double-stream attention module for joint image-text attention.
 
     This module fuses QKV projections for both image and text streams for improved speed,
     applies Q/K normalization and rotary embeddings, and computes joint attention.
@@ -205,6 +201,7 @@ class Attention(nn.Module):
         Module providing normalization and linear layers.
     **kwargs
         Additional arguments for quantized linear layers.
+
     """
 
     def __init__(
@@ -236,16 +233,16 @@ class Attention(nn.Module):
 
         # Q/K normalization for both streams
         self.norm_q = operations.RMSNorm(
-            dim_head, eps=eps, elementwise_affine=True, dtype=dtype, device=device
+            dim_head, eps=eps, elementwise_affine=True, dtype=dtype, device=device,
         )
         self.norm_k = operations.RMSNorm(
-            dim_head, eps=eps, elementwise_affine=True, dtype=dtype, device=device
+            dim_head, eps=eps, elementwise_affine=True, dtype=dtype, device=device,
         )
         self.norm_added_q = operations.RMSNorm(
-            dim_head, eps=eps, dtype=dtype, device=device
+            dim_head, eps=eps, dtype=dtype, device=device,
         )
         self.norm_added_k = operations.RMSNorm(
-            dim_head, eps=eps, dtype=dtype, device=device
+            dim_head, eps=eps, dtype=dtype, device=device,
         )
 
         # Image stream projections: fused QKV for speed
@@ -280,7 +277,7 @@ class Attention(nn.Module):
                     **kwargs,
                 ),
                 nn.Dropout(dropout),
-            ]
+            ],
         )
         self.to_add_out = SVDQW4A4Linear(
             self.inner_dim,
@@ -296,11 +293,10 @@ class Attention(nn.Module):
         hidden_states: torch.FloatTensor,
         encoder_hidden_states: torch.FloatTensor = None,
         encoder_hidden_states_mask: torch.FloatTensor = None,
-        attention_mask: Optional[torch.FloatTensor] = None,
-        image_rotary_emb: Optional[torch.Tensor] = None,
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
-        """
-        Forward pass for double-stream attention.
+        attention_mask: torch.FloatTensor | None = None,
+        image_rotary_emb: torch.Tensor | None = None,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """Forward pass for double-stream attention.
 
         Parameters
         ----------
@@ -321,6 +317,7 @@ class Attention(nn.Module):
             Output tensor for image stream.
         txt_attn_output : torch.Tensor
             Output tensor for text stream.
+
         """
         seq_txt = encoder_hidden_states.shape[1]
 
@@ -359,7 +356,7 @@ class Attention(nn.Module):
 
         # Compute joint attention
         joint_hidden_states = optimized_attention_masked(
-            joint_query, joint_key, joint_value, self.heads, attention_mask
+            joint_query, joint_key, joint_value, self.heads, attention_mask,
         )
 
         # Split results back to separate streams
@@ -374,8 +371,7 @@ class Attention(nn.Module):
 
 
 class NunchakuQwenImageTransformerBlock(nn.Module):
-    """
-    Transformer block with dual-stream (image/text) processing, modulation, and quantized attention/MLP.
+    """Transformer block with dual-stream (image/text) processing, modulation, and quantized attention/MLP.
 
     Parameters
     ----------
@@ -397,6 +393,7 @@ class NunchakuQwenImageTransformerBlock(nn.Module):
         Value added to scale in modulation (default: 1.0). Nunchaku may have fused the scale's shift into bias.
     **kwargs
         Additional arguments for quantized linear layers.
+
     """
 
     def __init__(
@@ -423,13 +420,13 @@ class NunchakuQwenImageTransformerBlock(nn.Module):
             AWQW4A16Linear(dim, 6 * dim, bias=True, torch_dtype=dtype, device=device),
         )
         self.img_norm1 = operations.LayerNorm(
-            dim, elementwise_affine=False, eps=eps, dtype=dtype, device=device
+            dim, elementwise_affine=False, eps=eps, dtype=dtype, device=device,
         )
         self.img_norm2 = operations.LayerNorm(
-            dim, elementwise_affine=False, eps=eps, dtype=dtype, device=device
+            dim, elementwise_affine=False, eps=eps, dtype=dtype, device=device,
         )
         self.img_mlp = NunchakuFeedForward(
-            dim=dim, dim_out=dim, dtype=dtype, device=device, **kwargs
+            dim=dim, dim_out=dim, dtype=dtype, device=device, **kwargs,
         )
 
         # Modulation and normalization for text stream
@@ -438,13 +435,13 @@ class NunchakuQwenImageTransformerBlock(nn.Module):
             AWQW4A16Linear(dim, 6 * dim, bias=True, torch_dtype=dtype, device=device),
         )
         self.txt_norm1 = operations.LayerNorm(
-            dim, elementwise_affine=False, eps=eps, dtype=dtype, device=device
+            dim, elementwise_affine=False, eps=eps, dtype=dtype, device=device,
         )
         self.txt_norm2 = operations.LayerNorm(
-            dim, elementwise_affine=False, eps=eps, dtype=dtype, device=device
+            dim, elementwise_affine=False, eps=eps, dtype=dtype, device=device,
         )
         self.txt_mlp = NunchakuFeedForward(
-            dim=dim, dim_out=dim, dtype=dtype, device=device, **kwargs
+            dim=dim, dim_out=dim, dtype=dtype, device=device, **kwargs,
         )
 
         self.attn = Attention(
@@ -461,10 +458,9 @@ class NunchakuQwenImageTransformerBlock(nn.Module):
         )
 
     def _modulate(
-        self, x: torch.Tensor, mod_params: torch.Tensor
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
-        """
-        Apply modulation to input tensor.
+        self, x: torch.Tensor, mod_params: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """Apply modulation to input tensor.
 
         Parameters
         ----------
@@ -479,6 +475,7 @@ class NunchakuQwenImageTransformerBlock(nn.Module):
             Modulated tensor.
         gate : torch.Tensor
             Gate tensor for residual connection.
+
         """
         shift, scale, gate = mod_params.chunk(3, dim=-1)
         if self.scale_shift != 0:
@@ -491,11 +488,10 @@ class NunchakuQwenImageTransformerBlock(nn.Module):
         encoder_hidden_states: torch.Tensor,
         encoder_hidden_states_mask: torch.Tensor,
         temb: torch.Tensor,
-        image_rotary_emb: Optional[Tuple[torch.Tensor, torch.Tensor]] = None,
+        image_rotary_emb: tuple[torch.Tensor, torch.Tensor] | None = None,
         timestep_zero_index=None,
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
-        """
-        Forward pass for the transformer block.
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """Forward pass for the transformer block.
 
         Parameters
         ----------
@@ -516,6 +512,7 @@ class NunchakuQwenImageTransformerBlock(nn.Module):
             Updated text stream tensor.
         hidden_states : torch.Tensor
             Updated image stream tensor.
+
         """
         # Get modulation parameters for both streams
         img_mod_params = self.img_mod(temb)  # [B, 6*dim]
@@ -575,10 +572,9 @@ class NunchakuQwenImageTransformerBlock(nn.Module):
 
 
 class NunchakuQwenImageTransformer2DModel(
-    NunchakuModelMixin, QwenImageTransformer2DModel
+    NunchakuModelMixin, QwenImageTransformer2DModel,
 ):
-    """
-    Full transformer model for QwenImage, using Nunchaku-optimized blocks.
+    """Full transformer model for QwenImage, using Nunchaku-optimized blocks.
 
     Parameters
     ----------
@@ -616,19 +612,20 @@ class NunchakuQwenImageTransformer2DModel(
         If not None, transformer blocks will be initialized to this device (usually cpu) rather than `device`
     **kwargs
         Additional arguments for quantized linear layers.
+
     """
 
     def __init__(
         self,
         patch_size: int = 2,
         in_channels: int = 64,
-        out_channels: Optional[int] = 16,
+        out_channels: int | None = 16,
         num_layers: int = 60,
         attention_head_dim: int = 128,
         num_attention_heads: int = 24,
         joint_attention_dim: int = 3584,
         pooled_projection_dim: int = 768,
-        axes_dims_rope: Tuple[int, int, int] = (16, 56, 56),
+        axes_dims_rope: tuple[int, int, int] = (16, 56, 56),
         default_ref_method="index",
         image_model=None,
         final_layer=True,
@@ -648,7 +645,7 @@ class NunchakuQwenImageTransformer2DModel(
         self.default_ref_method = default_ref_method
 
         self.pe_embedder = EmbedND(
-            dim=attention_head_dim, theta=10000, axes_dim=list(axes_dims_rope)
+            dim=attention_head_dim, theta=10000, axes_dim=list(axes_dims_rope),
         )
 
         self.time_text_embed = QwenTimestepProjEmbeddings(
@@ -661,13 +658,13 @@ class NunchakuQwenImageTransformer2DModel(
         )
 
         self.txt_norm = operations.RMSNorm(
-            joint_attention_dim, eps=1e-6, dtype=dtype, device=device
+            joint_attention_dim, eps=1e-6, dtype=dtype, device=device,
         )
         self.img_in = operations.Linear(
-            in_channels, self.inner_dim, dtype=dtype, device=device
+            in_channels, self.inner_dim, dtype=dtype, device=device,
         )
         self.txt_in = operations.Linear(
-            joint_attention_dim, self.inner_dim, dtype=dtype, device=device
+            joint_attention_dim, self.inner_dim, dtype=dtype, device=device,
         )
 
         self.transformer_blocks = nn.ModuleList(
@@ -687,7 +684,7 @@ class NunchakuQwenImageTransformer2DModel(
                     **kwargs,
                 )
                 for _ in range(num_layers)
-            ]
+            ],
         )
 
         if final_layer:
@@ -715,12 +712,11 @@ class NunchakuQwenImageTransformer2DModel(
         attention_mask=None,
         ref_latents=None,
         additional_t_cond=None,
-        transformer_options={},
+        transformer_options=None,
         control=None,
         **kwargs,
     ):
-        """
-        Forward pass of the Nunchaku Qwen-Image model.
+        """Forward pass of the Nunchaku Qwen-Image model.
 
         Parameters
         ----------
@@ -747,6 +743,9 @@ class NunchakuQwenImageTransformer2DModel(
             Output tensor of shape (batch, channels, height, width), matching the input spatial dimensions.
 
         """
+        if transformer_options is None:
+            transformer_options = {}
+
         device = x.device
         if self.offload:
             self.offload_manager.set_device(device)
@@ -790,20 +789,19 @@ class NunchakuQwenImageTransformer2DModel(
                     w = max(w, ref.shape[-1] + w_offset)
 
                 kontext, kontext_ids, _ = self.process_img(
-                    ref, index=index, h_offset=h_offset, w_offset=w_offset
+                    ref, index=index, h_offset=h_offset, w_offset=w_offset,
                 )
                 hidden_states = torch.cat([hidden_states, kontext], dim=1)
                 img_ids = torch.cat([img_ids, kontext_ids], dim=1)
-            if timestep_zero:
-                if index > 0:
-                    timestep = torch.cat([timestep, timestep * 0], dim=0)
-                    timestep_zero_index = num_embeds
+            if timestep_zero and index > 0:
+                timestep = torch.cat([timestep, timestep * 0], dim=0)
+                timestep_zero_index = num_embeds
 
         txt_start = round(
             max(
                 ((x.shape[-1] + (self.patch_size // 2)) // self.patch_size) // 2,
                 ((x.shape[-2] + (self.patch_size // 2)) // self.patch_size) // 2,
-            )
+            ),
         )
         txt_ids = (
             torch.arange(txt_start, txt_start + context.shape[1], device=x.device)
@@ -834,7 +832,7 @@ class NunchakuQwenImageTransformer2DModel(
                     block = self.offload_manager.get_block(i)
                 if ("double_block", i) in blocks_replace:
 
-                    def block_wrap(args):
+                    def block_wrap(args, block=block):
                         out = {}
                         out["txt"], out["img"] = block(
                             hidden_states=args["img"],
@@ -870,7 +868,7 @@ class NunchakuQwenImageTransformer2DModel(
                     control
                     if control is not None
                     else (
-                        transformer_options.get("control", None)
+                        transformer_options.get("control")
                         if isinstance(transformer_options, dict)
                         else None
                     )
@@ -879,7 +877,7 @@ class NunchakuQwenImageTransformer2DModel(
                     control_i = _control.get("input")
                     try:
                         _scale = float(
-                            _control.get("weight", _control.get("scale", 1.0))
+                            _control.get("weight", _control.get("scale", 1.0)),
                         )
                     except Exception:
                         _scale = 1.0
@@ -909,14 +907,13 @@ class NunchakuQwenImageTransformer2DModel(
         hidden_states = self.proj_out(hidden_states)
 
         hidden_states = hidden_states[:, :num_embeds].view(
-            orig_shape[0], orig_shape[-2] // 2, orig_shape[-1] // 2, orig_shape[1], 2, 2
+            orig_shape[0], orig_shape[-2] // 2, orig_shape[-1] // 2, orig_shape[1], 2, 2,
         )
         hidden_states = hidden_states.permute(0, 3, 1, 4, 2, 5)
         return hidden_states.reshape(orig_shape)[:, :, :, : x.shape[-2], : x.shape[-1]]
 
     def set_offload(self, offload: bool, **kwargs):
-        """
-        Enable or disable CPU offloading for the transformer blocks.
+        """Enable or disable CPU offloading for the transformer blocks.
 
         Parameters
         ----------
@@ -931,6 +928,7 @@ class NunchakuQwenImageTransformer2DModel(
         -----
         - When offloading is enabled, only a subset of modules remain on GPU.
         - When disabling, memory is released and CUDA cache is cleared.
+
         """
         if offload == self.offload:
             # Nothing changed, just return

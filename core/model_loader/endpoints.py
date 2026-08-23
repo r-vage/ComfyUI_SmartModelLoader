@@ -202,7 +202,7 @@ def prepare_download_destination(
     create_parents: bool = False,
 ) -> tuple[Path, Path, str]:
     root = Path(root_dir).expanduser().resolve(strict=True)
-    selected = requested_filename if requested_filename else Path(resolved_filename).name
+    selected = requested_filename or Path(resolved_filename).name
     if not isinstance(selected, str) or not selected or "\0" in selected:
         raise ValueError("Invalid download filename")
     normalized = selected.replace("\\", "/")
@@ -229,7 +229,7 @@ def prepare_download_destination(
             except FileExistsError:
                 if candidate.is_symlink() or not candidate.is_dir():
                     raise ValueError(
-                        "Download directory must be a non-symlink directory"
+                        "Download directory must be a non-symlink directory",
                     ) from None
         current = candidate
 
@@ -259,7 +259,7 @@ def promote_verified_replacement(
         if not acquired:
             raise BlockingIOError("Prompt queue is active")
         root, replacement, replacement_relative = resolve_role_target(
-            role, replacement_filename
+            role, replacement_filename,
         )
         if (
             not isinstance(original_filename, str)
@@ -302,7 +302,7 @@ def promote_verified_replacement(
                 continue
             try:
                 _cleanup_root, candidate, _cleanup_relative = resolve_role_target(
-                    role, name
+                    role, name,
                 )
             except (FileNotFoundError, ValueError):
                 continue
@@ -321,7 +321,7 @@ def promote_verified_replacement(
         original_targets = [original, *[Path(f"{original}{suffix}") for suffix in (".sha256", ".eclipse.json")]]
         for candidate in cleanup_targets:
             original_targets.extend(
-                [candidate, *[Path(f"{candidate}{suffix}") for suffix in (".sha256", ".eclipse.json")]]
+                [candidate, *[Path(f"{candidate}{suffix}") for suffix in (".sha256", ".eclipse.json")]],
             )
         replacement_pairs = [(replacement, original)]
         replacement_sidecars = [
@@ -343,7 +343,7 @@ def promote_verified_replacement(
                 if not target.is_file() or target.is_symlink():
                     continue
                 tombstone = target.with_name(
-                    f".{target.name}.eclipse-tombstone-{uuid.uuid4().hex}"
+                    f".{target.name}.eclipse-tombstone-{uuid.uuid4().hex}",
                 )
                 os.replace(target, tombstone)
                 tombstoned.append((target, tombstone))

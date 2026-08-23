@@ -64,11 +64,11 @@ def _read_default_config() -> dict[str, Any]:
             defaults = json.load(default_file)
     except (OSError, json.JSONDecodeError) as error:
         raise JsonStoreError(
-            f"Could not read default config '{DEFAULT_CONFIG_PATH}': {error}"
+            f"Could not read default config '{DEFAULT_CONFIG_PATH}': {error}",
         ) from error
     if not isinstance(defaults, dict):
         raise JsonStoreError(
-            f"Default config root must be an object: {DEFAULT_CONFIG_PATH}"
+            f"Default config root must be an object: {DEFAULT_CONFIG_PATH}",
         )
     return defaults
 

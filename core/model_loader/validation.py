@@ -45,10 +45,10 @@ FEATURES = frozenset(
         "memory_cleanup",
         "integrity",
         "seed",
-    }
+    },
 )
 MODEL_LOADER_FEATURES = frozenset(
-    {"lora", "model_sampling", "block_swap", "memory_cleanup"}
+    {"lora", "model_sampling", "block_swap", "memory_cleanup"},
 )
 
 DOWNLOAD_TARGET_ROLES = (
@@ -357,10 +357,10 @@ def resolve_model_file(
         if not _extension_allowed(extension, reference_type):
             if extension in LEGACY_MODEL_EXTENSIONS:
                 raise LoaderValidationError(
-                    "Legacy model formats are disabled by the administrator"
+                    "Legacy model formats are disabled by the administrator",
                 )
             raise LoaderValidationError(
-                f"Unsupported {reference_type} extension '{extension or '<none>'}'"
+                f"Unsupported {reference_type} extension '{extension or '<none>'}'",
             )
         return ResolvedModelFile(
             role=candidate_role,
@@ -384,7 +384,7 @@ def resolve_clip_file(filename: str) -> ResolvedModelFile:
 
 
 def _validate_enum(
-    kwargs: Mapping[str, Any], key: str, allowed: Collection[str]
+    kwargs: Mapping[str, Any], key: str, allowed: Collection[str],
 ) -> None:
     if key in kwargs and kwargs[key] not in allowed:
         raise LoaderValidationError(f"Invalid {key}")
@@ -430,13 +430,13 @@ def _validate_json_container(
             raise LoaderValidationError(f"{key} must contain valid JSON") from error
     if not isinstance(value, expected_type):
         raise LoaderValidationError(
-            f"{key} must be a JSON {'object' if expected_type is dict else 'array'}"
+            f"{key} must be a JSON {'object' if expected_type is dict else 'array'}",
         )
     if len(value) > maximum_items:
         raise LoaderValidationError(f"{key} contains too many entries")
     try:
         serialized_size = len(
-            json.dumps(value, allow_nan=False, separators=(",", ":")).encode("utf-8")
+            json.dumps(value, allow_nan=False, separators=(",", ":")).encode("utf-8"),
         )
     except (TypeError, ValueError) as error:
         raise LoaderValidationError(f"{key} must contain JSON-compatible values") from error
@@ -478,10 +478,10 @@ def validate_loader_request(
     if smart:
         clip_count = _validate_count(kwargs, "clip_count", 1, 4)
         _validate_json_container(
-            kwargs, "expected_hashes", dict, maximum_items=256
+            kwargs, "expected_hashes", dict, maximum_items=256,
         )
         download_locators = _validate_json_container(
-            kwargs, "download_locators", list, maximum_items=128
+            kwargs, "download_locators", list, maximum_items=128,
         )
         if not all(isinstance(locator, dict) for locator in download_locators):
             raise LoaderValidationError("download_locators must contain JSON objects")
@@ -494,7 +494,7 @@ def validate_loader_request(
         ):
             raise LoaderValidationError("air_or_hash must be a SHA-256 or CivitAI AIR")
         resolution = kwargs.get(
-            "resolution", "1024x1024 (1:1 XL/SD3/Flux/HiDream)"
+            "resolution", "1024x1024 (1:1 XL/SD3/Flux/HiDream)",
         )
         if resolution != "Custom" and resolution not in RESOLUTION_MAP:
             raise LoaderValidationError("Invalid resolution")
@@ -520,7 +520,7 @@ def validate_loader_request(
             role,
             kwargs.get(field, "None"),
             reference_type=reference_type,
-        )
+        ),
     }
 
     selected = set(features)
@@ -533,19 +533,19 @@ def validate_loader_request(
     if smart and external_only_model:
         if "clip" in selected and kwargs.get("clip_source", "Baked") == "Baked":
             raise LoaderValidationError(
-                f"{model_type} requires an external CLIP when the clip feature is enabled"
+                f"{model_type} requires an external CLIP when the clip feature is enabled",
             )
         if "vae" in selected and kwargs.get("vae_source", "Baked") == "Baked":
             raise LoaderValidationError(
-                f"{model_type} requires an external VAE when the vae feature is enabled"
+                f"{model_type} requires an external VAE when the vae feature is enabled",
             )
         if "audio_vae" in selected and kwargs.get("audio_vae_source", "Baked") == "Baked":
             raise LoaderValidationError(
-                f"{model_type} requires an external audio VAE when audio_vae is enabled"
+                f"{model_type} requires an external audio VAE when audio_vae is enabled",
             )
         if "latent" in selected and "vae" not in selected:
             raise LoaderValidationError(
-                f"{model_type} requires the vae feature to create a latent"
+                f"{model_type} requires the vae feature to create a latent",
             )
     if "lora" in selected:
         for index in range(1, lora_count + 1):
@@ -554,7 +554,7 @@ def validate_loader_request(
             name = kwargs.get(f"lora_name_{index}", "None")
             if name not in (None, "", "None"):
                 resolved_files[f"lora_name_{index}"] = resolve_model_file(
-                    "loras", name, reference_type="lora"
+                    "loras", name, reference_type="lora",
                 )
 
     if smart and "clip" in selected and kwargs.get("clip_source", "Baked") != "Baked":
@@ -562,17 +562,17 @@ def validate_loader_request(
             name = kwargs.get(f"clip_name{index}", "None")
             if name in (None, "", "None"):
                 raise LoaderValidationError(
-                    f"External CLIP selection {index} is required"
+                    f"External CLIP selection {index} is required",
                 )
             resolved_files[f"clip_name{index}"] = resolve_clip_file(name)
 
     if smart and "vae" in selected and kwargs.get("vae_source", "Baked") == "External":
         resolved_files["vae_name"] = resolve_model_file(
-            "vae", kwargs.get("vae_name", "None"), reference_type="vae"
+            "vae", kwargs.get("vae_name", "None"), reference_type="vae",
         )
     if smart and "audio_vae" in selected and kwargs.get("audio_vae_source", "External") == "External":
         resolved_files["audio_vae_name"] = resolve_model_file(
-            "vae", kwargs.get("audio_vae_name", "None"), reference_type="audio_vae"
+            "vae", kwargs.get("audio_vae_name", "None"), reference_type="audio_vae",
         )
 
     ltx_text_encoder = kwargs.get("ltx_text_encoder", "None")

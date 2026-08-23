@@ -61,7 +61,7 @@ def _prompt_queue_state_is_idle(prompt_queue) -> bool:
             isinstance(current, tuple)
             and len(current) >= 2
             and not current[0]
-            and not current[1]
+            and not current[1],
         )
     return False
 

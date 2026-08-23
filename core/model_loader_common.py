@@ -137,9 +137,8 @@ def is_nunchaku_model(model: Any) -> bool:
             actual_wrapper = model_wrapper._orig_mod
             wrapper_class_name = type(actual_wrapper).__name__
             return wrapper_class_name in ("ComfyFluxWrapper", "ComfyQwenImageWrapper")
-        else:
-            wrapper_class_name = type(model_wrapper).__name__
-            return wrapper_class_name in ("ComfyFluxWrapper", "ComfyQwenImageWrapper")
+        wrapper_class_name = type(model_wrapper).__name__
+        return wrapper_class_name in ("ComfyFluxWrapper", "ComfyQwenImageWrapper")
     except (AttributeError, TypeError):
         return False
 
@@ -165,12 +164,11 @@ def apply_loras(model: Any, clip: Any, lora_params: list) -> tuple:
             "Detected Nunchaku ZImage model, applying LoRAs via standard ComfyUI loader",
         )
         return _apply_loras_zimage(model, clip, lora_params)
-    elif is_nunchaku_model(model):
+    if is_nunchaku_model(model):
         log.msg("LoRA", "Detected Nunchaku model, applying LoRAs via wrapper")
         return _apply_loras_nunchaku(model, clip, lora_params)
-    else:
-        log.msg("LoRA", "Applying LoRAs to standard model")
-        return _apply_loras_standard(model, clip, lora_params)
+    log.msg("LoRA", "Applying LoRAs to standard model")
+    return _apply_loras_standard(model, clip, lora_params)
 
 
 def _apply_loras_standard(model: Any, clip: Any, lora_params: list) -> tuple:
@@ -180,11 +178,11 @@ def _apply_loras_standard(model: Any, clip: Any, lora_params: list) -> tuple:
 
     for lora_name, model_weight in lora_params:
         lora_path = str(
-            resolve_model_file("loras", lora_name, reference_type="lora").path
+            resolve_model_file("loras", lora_name, reference_type="lora").path,
         )
         lora = comfy.utils.load_torch_file(lora_path, safe_load=True)
         model_lora, clip_lora = comfy.sd.load_lora_for_models(
-            model_lora, clip_lora, lora, model_weight, model_weight
+            model_lora, clip_lora, lora, model_weight, model_weight,
         )
         log.msg("LoRA", f"Applied {lora_name} with weight {model_weight}")
 
@@ -200,14 +198,14 @@ def _apply_loras_zimage(model: Any, clip: Any, lora_params: list) -> tuple:
 
     for lora_name, model_weight in lora_params:
         lora_path = str(
-            resolve_model_file("loras", lora_name, reference_type="lora").path
+            resolve_model_file("loras", lora_name, reference_type="lora").path,
         )
         lora = comfy.utils.load_torch_file(lora_path, safe_load=True)
         ret_model, ret_clip = comfy.sd.load_lora_for_models(
-            ret_model, ret_clip, lora, model_weight, model_weight
+            ret_model, ret_clip, lora, model_weight, model_weight,
         )
         log.msg(
-            "LoRA", f"Applied ZImage LoRA {lora_name} with weight {model_weight}"
+            "LoRA", f"Applied ZImage LoRA {lora_name} with weight {model_weight}",
         )
 
     return (ret_model, ret_clip)
@@ -219,7 +217,7 @@ def _apply_loras_nunchaku(model: Any, clip: Any, lora_params: list) -> tuple:
         from .nunchaku_wrapper import ComfyFluxWrapper
     except ImportError as e:
         log.warning(
-            "LoRA", f"Nunchaku wrappers not available for LoRA application: {e}"
+            "LoRA", f"Nunchaku wrappers not available for LoRA application: {e}",
         )
         return (model, clip)
 
@@ -253,7 +251,7 @@ def _apply_loras_nunchaku(model: Any, clip: Any, lora_params: list) -> tuple:
         wrapper.loras = []
         for lora_name, model_weight in lora_params:
             lora_path = str(
-                resolve_model_file("loras", lora_name, reference_type="lora").path
+                resolve_model_file("loras", lora_name, reference_type="lora").path,
             )
             wrapper.loras.append((lora_path, model_weight))
             log.msg("LoRA", f"Applied Qwen LoRA {lora_name} with weight {model_weight}")
@@ -333,16 +331,15 @@ def _apply_loras_nunchaku(model: Any, clip: Any, lora_params: list) -> tuple:
 
     for lora_name, model_weight in lora_params:
         lora_path = str(
-            resolve_model_file("loras", lora_name, reference_type="lora").path
+            resolve_model_file("loras", lora_name, reference_type="lora").path,
         )
         ret_model_wrapper.loras.append((lora_path, model_weight))
         log.msg("LoRA", f"Applied Nunchaku LoRA {lora_name} with weight {model_weight}")
         sd = to_diffusers(lora_path)
         if "transformer.x_embedder.lora_A.weight" in sd:
             new_in_channels = sd["transformer.x_embedder.lora_A.weight"].shape[1]
-            assert (
-                new_in_channels % 4 == 0
-            ), f"Invalid LoRA input channels: {new_in_channels}"
+            if new_in_channels % 4 != 0:
+                raise ValueError(f"Invalid LoRA input channels: {new_in_channels}")
             new_in_channels = new_in_channels // 4
             max_in_channels = max(max_in_channels, new_in_channels)
 
@@ -448,36 +445,35 @@ def apply_model_sampling(
 
     if sampling_method == "SD3":
         return _apply_sd3_sampling(model, shift=shift, multiplier=1000.0)
-    elif sampling_method == "AuraFlow":
+    if sampling_method == "AuraFlow":
         return _apply_auraflow_sampling(model, shift=shift, multiplier=1.0)
-    elif sampling_method == "Flux":
+    if sampling_method == "Flux":
         return _apply_flux_sampling(
-            model, max_shift=shift, base_shift=base_shift, width=width, height=height
+            model, max_shift=shift, base_shift=base_shift, width=width, height=height,
         )
-    elif sampling_method == "Stable Cascade":
+    if sampling_method == "Stable Cascade":
         return _apply_stable_cascade_sampling(model, shift=shift)
-    elif sampling_method == "LCM":
+    if sampling_method == "LCM":
         return _apply_lcm_sampling(
-            model, original_timesteps=original_timesteps, zsnr=zsnr
+            model, original_timesteps=original_timesteps, zsnr=zsnr,
         )
-    elif sampling_method == "ContinuousEDM":
+    if sampling_method == "ContinuousEDM":
         return _apply_continuous_edm_sampling(
             model,
             sampling_subtype=sampling_subtype,
             sigma_max=sigma_max,
             sigma_min=sigma_min,
         )
-    elif sampling_method == "ContinuousV":
+    if sampling_method == "ContinuousV":
         return _apply_continuous_v_sampling(
-            model, sigma_max=sigma_max, sigma_min=sigma_min
+            model, sigma_max=sigma_max, sigma_min=sigma_min,
         )
-    elif sampling_method == "LTXV":
+    if sampling_method == "LTXV":
         return _apply_ltxv_sampling(model, max_shift=shift, base_shift=base_shift)
-    else:
-        log.warning(
-            "Model Sampling", f"Unknown sampling method '{sampling_method}', skipping"
-        )
-        return model
+    log.warning(
+        "Model Sampling", f"Unknown sampling method '{sampling_method}', skipping",
+    )
+    return model
 
 
 def _apply_sd3_sampling(model, shift: float, multiplier: float = 1000.0):
@@ -517,7 +513,7 @@ def _apply_auraflow_sampling(model, shift: float, multiplier: float = 1.0):
 
 
 def _apply_flux_sampling(
-    model, max_shift: float, base_shift: float, width: int, height: int
+    model, max_shift: float, base_shift: float, width: int, height: int,
 ):
     m = model.clone()
     x1 = 256
@@ -563,7 +559,7 @@ def _apply_lcm_sampling(model, original_timesteps: int = 50, zsnr: bool = False)
     class LCM(comfy.model_sampling.EPS):
         def calculate_denoised(self, sigma, model_output, model_input):
             timestep = self.timestep(sigma).view(
-                sigma.shape[:1] + (1,) * (model_output.ndim - 1)
+                sigma.shape[:1] + (1,) * (model_output.ndim - 1),
             )
             sigma = sigma.view(sigma.shape[:1] + (1,) * (model_output.ndim - 1))
             x0 = model_input - model_output * sigma
@@ -674,7 +670,7 @@ def _apply_continuous_edm_sampling(
 
 
 def _apply_continuous_v_sampling(
-    model, sigma_max: float = 500.0, sigma_min: float = 0.03
+    model, sigma_max: float = 500.0, sigma_min: float = 0.03,
 ):
     m = model.clone()
     sampling_type = comfy.model_sampling.V_PREDICTION
@@ -746,7 +742,7 @@ def apply_blockswap(
 
 def get_model_loader_inputs() -> list:
     # Returns the shared input list used by both Model Loader and Model Loader Pipe
-    loras = ["None"] + folder_paths.get_filename_list("loras")
+    loras = ["None", *folder_paths.get_filename_list("loras")]
 
     return [
         io.String.Input(
@@ -770,31 +766,31 @@ def get_model_loader_inputs() -> list:
         ),
         io.Combo.Input(
             "ckpt_name",
-            options=["None"] + folder_paths.get_filename_list("checkpoints"),
+            options=["None", *folder_paths.get_filename_list("checkpoints")],
             default="None",
             tooltip="Select checkpoint file",
         ),
         io.Combo.Input(
             "unet_name",
-            options=["None"] + folder_paths.get_filename_list("diffusion_models"),
+            options=["None", *folder_paths.get_filename_list("diffusion_models")],
             default="None",
             tooltip="Select UNet diffusion model",
         ),
         io.Combo.Input(
             "nunchaku_name",
-            options=["None"] + folder_paths.get_filename_list("diffusion_models"),
+            options=["None", *folder_paths.get_filename_list("diffusion_models")],
             default="None",
             tooltip="Select Nunchaku Flux model",
         ),
         io.Combo.Input(
             "qwen_name",
-            options=["None"] + folder_paths.get_filename_list("diffusion_models"),
+            options=["None", *folder_paths.get_filename_list("diffusion_models")],
             default="None",
             tooltip="Select Nunchaku Qwen model",
         ),
         io.Combo.Input(
             "zimage_name",
-            options=["None"] + folder_paths.get_filename_list("diffusion_models"),
+            options=["None", *folder_paths.get_filename_list("diffusion_models")],
             default="None",
             tooltip="Select Nunchaku ZImage model",
         ),
@@ -909,7 +905,7 @@ def get_model_loader_inputs() -> list:
             tooltip="Enable LoRA 1",
         ),
         io.Combo.Input(
-            "lora_name_1", options=loras, default="None", tooltip="LoRA 1 file"
+            "lora_name_1", options=loras, default="None", tooltip="LoRA 1 file",
         ),
         io.Float.Input(
             "lora_weight_1",
@@ -927,7 +923,7 @@ def get_model_loader_inputs() -> list:
             tooltip="Enable LoRA 2",
         ),
         io.Combo.Input(
-            "lora_name_2", options=loras, default="None", tooltip="LoRA 2 file"
+            "lora_name_2", options=loras, default="None", tooltip="LoRA 2 file",
         ),
         io.Float.Input(
             "lora_weight_2",
@@ -945,7 +941,7 @@ def get_model_loader_inputs() -> list:
             tooltip="Enable LoRA 3",
         ),
         io.Combo.Input(
-            "lora_name_3", options=loras, default="None", tooltip="LoRA 3 file"
+            "lora_name_3", options=loras, default="None", tooltip="LoRA 3 file",
         ),
         io.Float.Input(
             "lora_weight_3",
@@ -1074,7 +1070,7 @@ def get_model_loader_inputs() -> list:
         # --- Optional LTX2 text encoder (appended last so existing workflows keep widget order) ---
         io.Combo.Input(
             "ltx_text_encoder",
-            options=["None"] + _get_clip_file_list(),
+            options=["None", *_get_clip_file_list()],
             default="None",
             tooltip=(
                 "Optional LTX2/LTXV gemma text encoder (from the text_encoders/clip folder, "
@@ -1249,7 +1245,7 @@ def load_model(log_prefix: str, **kwargs) -> tuple[Any, Any, Any, Any, str, str]
             model_options["dtype"] = torch.float8_e5m2
 
         loaded_model = comfy.sd.load_diffusion_model(
-            unet_path, model_options=model_options
+            unet_path, model_options=model_options,
         )
         checkpoint_name = unet_name
 
@@ -1272,7 +1268,7 @@ def load_model(log_prefix: str, **kwargs) -> tuple[Any, Any, Any, Any, str, str]
 
         if not NUNCHAKU_AVAILABLE:
             raise RuntimeError(
-                "Nunchaku support not available — install the 'nunchaku' pip package"
+                "Nunchaku support not available — install the 'nunchaku' pip package",
             )
 
         loaded_model = load_nunchaku_model(
@@ -1307,7 +1303,7 @@ def load_model(log_prefix: str, **kwargs) -> tuple[Any, Any, Any, Any, str, str]
 
         if not NUNCHAKU_AVAILABLE:
             raise RuntimeError(
-                "Nunchaku support not available — install the 'nunchaku' pip package"
+                "Nunchaku support not available — install the 'nunchaku' pip package",
             )
 
         loaded_model = load_nunchaku_model(
@@ -1340,7 +1336,7 @@ def load_model(log_prefix: str, **kwargs) -> tuple[Any, Any, Any, Any, str, str]
 
         if not NUNCHAKU_AVAILABLE:
             raise RuntimeError(
-                "Nunchaku support not available — install the 'nunchaku' pip package"
+                "Nunchaku support not available — install the 'nunchaku' pip package",
             )
 
         loaded_model = load_nunchaku_model(
@@ -1369,7 +1365,7 @@ def load_model(log_prefix: str, **kwargs) -> tuple[Any, Any, Any, Any, str, str]
 
         if not GGUF_AVAILABLE:
             raise RuntimeError(
-                "GGUF support not available — install the 'gguf' pip package"
+                "GGUF support not available — install the 'gguf' pip package",
             )
 
         loaded_model = load_gguf_model(
@@ -1410,16 +1406,16 @@ def load_model(log_prefix: str, **kwargs) -> tuple[Any, Any, Any, Any, str, str]
                 if any(p.lower().endswith(".gguf") for p in clip_paths):
                     if not GGUF_AVAILABLE:
                         raise ImportError(
-                            "GGUF text encoder selected but the 'gguf' pip package is not installed."
+                            "GGUF text encoder selected but the 'gguf' pip package is not installed.",
                         )
                     loaded_clip = load_gguf_clip(
-                        clip_paths=clip_paths, clip_type=comfy.sd.CLIPType.LTXV
+                        clip_paths=clip_paths, clip_type=comfy.sd.CLIPType.LTXV,
                     )
                 else:
                     loaded_clip = comfy.sd.load_clip(
                         ckpt_paths=clip_paths,
                         embedding_directory=folder_paths.get_folder_paths(
-                            "embeddings"
+                            "embeddings",
                         ),
                         clip_type=comfy.sd.CLIPType.LTXV,
                     )
@@ -1454,7 +1450,7 @@ def load_model(log_prefix: str, **kwargs) -> tuple[Any, Any, Any, Any, str, str]
     if lora_params:
         log.msg("LoRA", f"Applying {len(lora_params)} LoRA(s)...")
         loaded_model, loaded_clip = apply_loras(
-            loaded_model, loaded_clip, lora_params
+            loaded_model, loaded_clip, lora_params,
         )
 
     lora_string = ""
@@ -1504,7 +1500,7 @@ def load_model(log_prefix: str, **kwargs) -> tuple[Any, Any, Any, Any, str, str]
             ext_hint = ""
         raise RuntimeError(
             f"Failed to load {model_type} model. Check the console log above for details.\n"
-            f"The model could not be loaded — ensure the file exists and is not corrupted. {ext_hint}"
+            f"The model could not be loaded — ensure the file exists and is not corrupted. {ext_hint}",
         )
 
     return (
@@ -1526,13 +1522,13 @@ def load_model(log_prefix: str, **kwargs) -> tuple[Any, Any, Any, Any, str, str]
 
 
 def load_custom_vae(
-    vae_name: str, disable_offload: bool | None = None
+    vae_name: str, disable_offload: bool | None = None,
 ) -> comfy.sd.VAE:
     # Load an external VAE file by name. Returns a stock comfy.sd.VAE.
     # Set disable_offload=True to force a full load (skip the offload pass);
     # leaving it None preserves the upstream per-VAE default.
     vae_path = str(
-        resolve_model_file("vae", vae_name, reference_type="vae").path
+        resolve_model_file("vae", vae_name, reference_type="vae").path,
     )
     sd, metadata = comfy.utils.load_torch_file(vae_path, return_metadata=True)
     vae = comfy.sd.VAE(sd=sd, metadata=metadata)
@@ -1550,7 +1546,7 @@ def load_audio_vae_from_path(vae_path: str) -> comfy.sd.VAE | None:
     # Returns None when the file contains no audio VAE keys (so callers can warn).
     sd, metadata = comfy.utils.load_torch_file(vae_path, return_metadata=True)
     audio_sd = comfy.utils.state_dict_prefix_replace(
-        sd, {"audio_vae.": "autoencoder.", "vocoder.": "vocoder."}, filter_keys=True
+        sd, {"audio_vae.": "autoencoder.", "vocoder.": "vocoder."}, filter_keys=True,
     )
     if not audio_sd:
         return None

@@ -1,11 +1,13 @@
 # (c) City96 || Apache-2.0 (apache.org/licenses/LICENSE-2.0)
-import gguf
-import torch
 import logging
 
-import comfy.ops
 import comfy.lora
 import comfy.model_management
+import comfy.ops
+import torch
+
+import gguf
+
 from .dequant import dequantize_tensor, is_quantized
 
 
@@ -32,34 +34,32 @@ def get_torch_compiler_disable_decorator():
     if not chained_hasattr(torch, "compiler.disable"):
         logging.info("ComfyUI-GGUF: Torch too old for torch.compile - bypassing")
         return dummy_decorator  # torch too old
-    elif version.parse(torch.__version__) >= version.parse("2.8"):
+    if version.parse(torch.__version__) >= version.parse("2.8"):
         logging.info("ComfyUI-GGUF: Allowing full torch compile")
         return dummy_decorator  # torch compile works
     if chained_hasattr(torch, "_dynamo.config.nontraceable_tensor_subclasses"):
         logging.info("ComfyUI-GGUF: Allowing full torch compile (nightly)")
         return dummy_decorator  # torch compile works, nightly before 2.8 release
-    else:
-        logging.info(
-            "ComfyUI-GGUF: Partial torch compile only, consider updating pytorch"
-        )
-        return torch.compiler.disable
+    logging.info(
+        "ComfyUI-GGUF: Partial torch compile only, consider updating pytorch",
+    )
+    return torch.compiler.disable
 
 
 torch_compiler_disable = get_torch_compiler_disable_decorator()
 
 
 class GGMLTensor(torch.Tensor):
-    """
-    Main tensor-like class for storing quantized weights
+    """Main tensor-like class for storing quantized weights
     """
 
-    def __init__(self, *args, tensor_type, tensor_shape, patches=[], **kwargs):
+    def __init__(self, *args, tensor_type, tensor_shape, patches=None, **kwargs):
         super().__init__()
         self.tensor_type = tensor_type
         self.tensor_shape = tensor_shape
-        self.patches = patches
+        self.patches = [] if patches is None else patches
 
-    def __new__(cls, *args, tensor_type, tensor_shape, patches=[], **kwargs):
+    def __new__(cls, *args, tensor_type, tensor_shape, patches=None, **kwargs):
         return super().__new__(cls, *args, **kwargs)
 
     def to(self, *args, **kwargs):
@@ -100,8 +100,7 @@ class GGMLTensor(torch.Tensor):
 
 
 class GGMLLayer(torch.nn.Module):
-    """
-    This (should) be responsible for de-quantizing on the fly
+    """This (should) be responsible for de-quantizing on the fly
     """
 
     comfy_cast_weights = True
@@ -123,11 +122,11 @@ class GGMLLayer(torch.nn.Module):
 
     def _load_from_state_dict(self, state_dict, prefix, *args, **kwargs):
         weight, bias = state_dict.get(f"{prefix}weight"), state_dict.get(
-            f"{prefix}bias"
+            f"{prefix}bias",
         )
         # NOTE: using modified load for linear due to not initializing on creation, see GGMLOps todo
         if self.is_ggml_quantized(weight=weight, bias=bias) or isinstance(
-            self, torch.nn.Linear
+            self, torch.nn.Linear,
         ):
             return self.ggml_load_from_state_dict(state_dict, prefix, *args, **kwargs)
         # Not strictly required, but fixes embedding shape mismatch. Threshold set in loader.py
@@ -196,7 +195,7 @@ class GGMLLayer(torch.nn.Module):
 
     def get_weight(self, tensor, dtype):
         if tensor is None:
-            return
+            return None
 
         # consolidate and load patches to GPU in async
         patch_list = []
@@ -221,7 +220,7 @@ class GGMLLayer(torch.nn.Module):
                     dtype if self.patch_dtype == "target" else self.patch_dtype
                 )
                 weight = comfy.lora.calculate_weight(
-                    patch_list, weight, key, patch_dtype
+                    patch_list, weight, key, patch_dtype,
                 )
         return weight
 
@@ -240,12 +239,12 @@ class GGMLLayer(torch.nn.Module):
         if s.bias is not None:
             bias = s.get_weight(s.bias.to(device), dtype)
             bias = comfy.ops.cast_to(
-                bias, bias_dtype, device, non_blocking=non_blocking, copy=False
+                bias, bias_dtype, device, non_blocking=non_blocking, copy=False,
             )
 
         weight = s.get_weight(s.weight.to(device), dtype)
         weight = comfy.ops.cast_to(
-            weight, dtype, device, non_blocking=non_blocking, copy=False
+            weight, dtype, device, non_blocking=non_blocking, copy=False,
         )
         return weight, bias
 
@@ -265,13 +264,12 @@ class GGMLLayer(torch.nn.Module):
 
 
 class GGMLOps(comfy.ops.manual_cast):
-    """
-    Dequantize weights on the fly before doing the compute
+    """Dequantize weights on the fly before doing the compute
     """
 
     class Linear(GGMLLayer, comfy.ops.manual_cast.Linear):
         def __init__(
-            self, in_features, out_features, bias=True, device=None, dtype=None
+            self, in_features, out_features, bias=True, device=None, dtype=None,
         ):
             torch.nn.Module.__init__(self)
             # TODO: better workaround for reserved memory spike on windows
@@ -300,7 +298,7 @@ class GGMLOps(comfy.ops.manual_cast):
             ):
                 out_dtype = None
             weight, _bias = self.cast_bias_weight(
-                self, device=input.device, dtype=out_dtype
+                self, device=input.device, dtype=out_dtype,
             )
             return torch.nn.functional.embedding(
                 input,
@@ -318,23 +316,22 @@ class GGMLOps(comfy.ops.manual_cast):
                 return super().forward_comfy_cast_weights(input)
             weight, bias = self.cast_bias_weight(input)
             return torch.nn.functional.layer_norm(
-                input, self.normalized_shape, weight, bias, self.eps
+                input, self.normalized_shape, weight, bias, self.eps,
             )
 
     class GroupNorm(GGMLLayer, comfy.ops.manual_cast.GroupNorm):
         def forward_ggml_cast_weights(self, input):
             weight, bias = self.cast_bias_weight(input)
             return torch.nn.functional.group_norm(
-                input, self.num_groups, weight, bias, self.eps
+                input, self.num_groups, weight, bias, self.eps,
             )
 
 
 def move_patch_to_device(item, device):
     if isinstance(item, torch.Tensor):
         return item.to(device, non_blocking=True)
-    elif isinstance(item, tuple):
+    if isinstance(item, tuple):
         return tuple(move_patch_to_device(x, device) for x in item)
-    elif isinstance(item, list):
+    if isinstance(item, list):
         return [move_patch_to_device(x, device) for x in item]
-    else:
-        return item
+    return item

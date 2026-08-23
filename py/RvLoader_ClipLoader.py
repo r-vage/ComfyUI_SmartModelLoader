@@ -4,17 +4,16 @@ from __future__ import annotations
 #
 # Loads 1-4 CLIP models from files with configurable architecture type.
 # For baked CLIP from checkpoints, use Model Loader instead.
-
-import os
+from pathlib import Path
 
 import comfy  # type: ignore
 import comfy.sd  # type: ignore
 import folder_paths  # type: ignore
+from comfy_api.latest import io  # type: ignore
 
 from ..core import CATEGORY, SLIDER_DISPLAY
-from ..core.logger import log
 from ..core.gguf_wrapper import GGUF_AVAILABLE, load_gguf_clip
-from comfy_api.latest import io  # type: ignore
+from ..core.logger import log
 
 _LOG_PREFIX = "CLIP Loader"
 
@@ -26,7 +25,7 @@ class RvLoader_ClipLoader(io.ComfyNode):
         clip_files = list(folder_paths.get_filename_list("clip"))
         if "text_encoders" in folder_paths.folder_names_and_paths:
             clip_files.extend(folder_paths.get_filename_list("text_encoders"))
-        clips = ["None"] + sorted(set(clip_files))
+        clips = ["None", *sorted(set(clip_files))]
 
         return io.Schema(
             node_id="CLIP Loader [Eclipse]",
@@ -132,16 +131,16 @@ class RvLoader_ClipLoader(io.ComfyNode):
             clip_name = clip_names[i] if i < len(clip_names) else "None"
             if clip_name not in (None, "", "None"):
                 clip_path = folder_paths.get_full_path("clip", clip_name)
-                if clip_path and os.path.isfile(clip_path):
+                if clip_path and Path(clip_path).is_file():
                     clip_paths.append(clip_path)
                 else:
                     log.warning(
-                        _LOG_PREFIX, f"CLIP file '{clip_name}' not found, skipping"
+                        _LOG_PREFIX, f"CLIP file '{clip_name}' not found, skipping",
                     )
 
         if not clip_paths:
             raise ValueError(
-                "No valid CLIP files found. Please select at least one CLIP model."
+                "No valid CLIP files found. Please select at least one CLIP model.",
             )
 
         # Resolve clip type dynamically to prevent AttributeError on older ComfyUI installations
@@ -162,7 +161,7 @@ class RvLoader_ClipLoader(io.ComfyNode):
         if has_gguf_clip:
             if not GGUF_AVAILABLE:
                 raise ImportError(
-                    "GGUF text encoder selected but GGUF support is not available. Install the 'gguf' pip package."
+                    "GGUF text encoder selected but GGUF support is not available. Install the 'gguf' pip package.",
                 )
             loaded_clip = load_gguf_clip(
                 clip_paths=clip_paths,
@@ -176,7 +175,7 @@ class RvLoader_ClipLoader(io.ComfyNode):
             )
 
         log.msg(
-            _LOG_PREFIX, f"Loaded {len(clip_paths)} CLIP model(s) as type '{clip_type}'"
+            _LOG_PREFIX, f"Loaded {len(clip_paths)} CLIP model(s) as type '{clip_type}'",
         )
 
         return io.NodeOutput(loaded_clip)

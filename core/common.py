@@ -5,7 +5,7 @@ import socket
 from datetime import datetime
 from pathlib import Path
 from types import ModuleType
-from typing import Any, Optional
+from typing import Any
 from urllib.parse import urlparse
 
 import comfy  # type: ignore
@@ -28,7 +28,7 @@ def _ensure_config_exists() -> bool:
 
 
 def calculate_file_hash(
-    file_path: Path, show_progress: bool = True, progress_cb=None
+    file_path: Path, show_progress: bool = True, progress_cb=None,
 ) -> str:
     # Calculate SHA256 hash of a file with optional progress display.
     import sys
@@ -41,7 +41,7 @@ def calculate_file_hash(
     size_mb = file_size / (1024 * 1024)
     if show_progress and file_size > 100 * 1024 * 1024:
         log.msg(
-            "FileHash", f"Calculating hash for {file_path.name} ({size_mb:.1f} MB)..."
+            "FileHash", f"Calculating hash for {file_path.name} ({size_mb:.1f} MB)...",
         )
     elif show_progress:
         log.msg("FileHash", f"Calculating hash for {file_path.name}...")
@@ -59,7 +59,7 @@ def calculate_file_hash(
                 progress = int((bytes_processed / file_size) * 100)
                 if progress != last_progress:
                     sys.stdout.write(
-                        f"\rEclipse: [FileHash]   Hashing: {progress}% ({bytes_processed / (1024*1024):.0f}/{size_mb:.0f} MB)"
+                        f"\rEclipse: [FileHash]   Hashing: {progress}% ({bytes_processed / (1024*1024):.0f}/{size_mb:.0f} MB)",
                     )
                     sys.stdout.flush()
                     last_progress = progress
@@ -83,7 +83,7 @@ class AnyType(str):
         return False
 
 
-def get_workflow_node(extra_pnginfo: Optional[dict], node_id: str, default=None):
+def get_workflow_node(extra_pnginfo: dict | None, node_id: str, default=None):
     # Find a node in the workflow JSON by its colon-path unique_id (e.g. "42:7").
     # Handles nodes inside ComfyUI subgraphs by traversing
     # workflow.definitions.subgraphs when the node type matches a subgraph UUID.
@@ -269,22 +269,22 @@ def purge_vram() -> None:
     # collection can invoke native CUDA extension finalizers.
     import gc
 
-    torch_mod: Optional[ModuleType]
-    model_management: Optional[ModuleType]
+    torch_mod: ModuleType | None
+    model_management: ModuleType | None
     try:
         import torch as torch_mod  # type: ignore
     except Exception:
         torch_mod = None
 
     try:
-        import comfy.model_management as model_management  # type: ignore
+        from comfy import model_management  # type: ignore
     except Exception:
         model_management = None
 
     # Do not destroy native objects while asynchronous kernels or weight
     # transfers are still using them.
     if torch_mod is not None and not _synchronize_accelerators(
-        torch_mod, "before model unloading"
+        torch_mod, "before model unloading",
     ):
         _defer_to_comfyui_memory_management("before model unloading")
         return
@@ -304,7 +304,7 @@ def purge_vram() -> None:
     # Model unloading may enqueue offload copies. Complete them before Python
     # invokes C-extension destructors during full garbage collection.
     if torch_mod is not None and not _synchronize_accelerators(
-        torch_mod, "after model unloading"
+        torch_mod, "after model unloading",
     ):
         _defer_to_comfyui_memory_management("after model unloading")
         return
@@ -317,7 +317,7 @@ def purge_vram() -> None:
         return
 
     if torch_mod is not None and not _synchronize_accelerators(
-        torch_mod, "after garbage collection"
+        torch_mod, "after garbage collection",
     ):
         _defer_to_comfyui_memory_management("after garbage collection")
         return
@@ -363,7 +363,7 @@ def cleanup_memory_before_load(aggressive: bool = True) -> None:
     # Note: Neither mode unloads models - use purge_vram() for that.
     import gc
 
-    torch_mod: Optional[ModuleType]
+    torch_mod: ModuleType | None
     try:
         import torch as torch_mod  # type: ignore
     except ImportError:
@@ -380,7 +380,7 @@ def cleanup_memory_before_load(aggressive: bool = True) -> None:
             if aggressive:
                 device_count = torch_mod.cuda.device_count()
                 log.msg(
-                    "Memory Cleanup", f"Clearing CUDA cache on {device_count} device(s)"
+                    "Memory Cleanup", f"Clearing CUDA cache on {device_count} device(s)",
                 )
                 for i in range(device_count):
                     with torch_mod.cuda.device(i):
@@ -758,8 +758,8 @@ def make_comfy_progress(total: int):
 
 
 def make_comfy_tqdm_class(
-    desc: Optional[str] = None,
-    log_prefix: Optional[str] = None,
+    desc: str | None = None,
+    log_prefix: str | None = None,
     heartbeat_interval_seconds: float = 30.0,
 ):
     # Return a tqdm-compatible class for use with hf_hub_download(tqdm_class=...).
@@ -828,7 +828,7 @@ def make_comfy_tqdm_class(
                 return None
             try:
                 return comfy.utils.ProgressBar(max(total, 1))
-            except Exception as exc:  # noqa: BLE001 - optional UI telemetry
+            except Exception as exc:
                 self._disable_comfy_progress(exc)
                 return None
 
@@ -846,7 +846,7 @@ def make_comfy_tqdm_class(
                 return
             try:
                 self.pbar.update_absolute(self.n, self.total)
-            except Exception as exc:  # noqa: BLE001 - optional UI telemetry
+            except Exception as exc:
                 # Registry-editor downloads are HTTP actions rather than queued
                 # prompts. Some ComfyUI versions therefore have no prompt id for
                 # the global progress hook. UI telemetry must never abort the

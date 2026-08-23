@@ -19,7 +19,7 @@ _LOG_PREFIX = "VAE Loader Video+Audio"
 class RvLoader_VaeLoaderVideoAudio(io.ComfyNode):
     @classmethod
     def define_schema(cls):
-        vaes = ["None"] + folder_paths.get_filename_list("vae")
+        vaes = ["None", *folder_paths.get_filename_list("vae")]
 
         return io.Schema(
             node_id="VAE Loader Video+Audio [Eclipse]",
@@ -71,13 +71,13 @@ class RvLoader_VaeLoaderVideoAudio(io.ComfyNode):
 
         if video_vae not in (None, "", "None"):
             loaded_video_vae = load_custom_vae(
-                video_vae, disable_offload=disable_offload
+                video_vae, disable_offload=disable_offload,
             )
             log.msg(_LOG_PREFIX, f"Loaded video VAE: {video_vae}")
 
         if audio_vae not in (None, "", "None"):
             loaded_audio_vae = load_custom_vae(
-                audio_vae, disable_offload=disable_offload
+                audio_vae, disable_offload=disable_offload,
             )
             log.msg(_LOG_PREFIX, f"Loaded audio VAE: {audio_vae}")
 

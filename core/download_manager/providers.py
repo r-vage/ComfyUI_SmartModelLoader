@@ -137,14 +137,14 @@ def get_destination_categories() -> list[dict[str, Any]]:
                     "id": _root_id(category, index),
                     "index": index,
                     "label": label,
-                }
+                },
             )
         categories.append(
             {
                 "id": category,
                 "label": _CATEGORY_LABELS.get(category, category.replace("_", " ").title()),
                 "roots": public_roots,
-            }
+            },
         )
     return categories
 
@@ -236,7 +236,7 @@ def infer_category(filename: str, provider_type: str, format_name: str) -> tuple
 def _decorate_row(row: dict[str, Any]) -> dict[str, Any]:
     categories = compatible_categories(row["remote_path"])
     suggestion, ambiguous = infer_category(
-        row["remote_path"], row.get("provider_type", ""), row.get("format", "")
+        row["remote_path"], row.get("provider_type", ""), row.get("format", ""),
     )
     if suggestion not in categories:
         suggestion = categories[0] if len(categories) == 1 else None
@@ -255,7 +255,7 @@ def _decorate_row(row: dict[str, Any]) -> dict[str, Any]:
             "category_ambiguous": ambiguous,
             "supported": disabled_reason is None,
             "disabled_reason": disabled_reason,
-        }
+        },
     )
     return row
 
@@ -360,7 +360,7 @@ def inspect_civitai(locator: str) -> tuple[dict[str, Any], list[dict[str, Any]]]
                 {
                     "remote_path": name.strip(),
                     "suggested_filename": suggested_filenames.get(
-                        file_id, name.strip()
+                        file_id, name.strip(),
                     ),
                     "provider": "civitai",
                     "provider_type": str(file_data.get("type") or "Model"),
@@ -388,8 +388,8 @@ def inspect_civitai(locator: str) -> tuple[dict[str, Any], list[dict[str, Any]]]
                         selected is not None
                         and (selected.get("file_id") == file_id or matched_hash == file_sha)
                     ),
-                }
-            )
+                },
+            ),
         )
     if selected and "file_id" in selected and not any(
         row["identity"]["file_id"] == selected["file_id"] for row in rows
@@ -513,8 +513,8 @@ def inspect_huggingface(locator: str, revision: str | None) -> tuple[dict[str, A
                         "size": entry.size,
                     },
                     "locator_match": bool(selected_path),
-                }
-            )
+                },
+            ),
         )
     if selected_path and not rows:
         raise ValueError("Hugging Face file was not found at the resolved commit")

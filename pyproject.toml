@@ -1,7 +1,7 @@
 [project]
 name = "ComfyUI_SmartModelLoader"
 description = "Complete ComfyUI diffusion pipeline with secure model loading, text conditioning, pipe sampling, and verified downloads."
-version = "1.0.3"
+version = "1.0.4"
 license = {file = "LICENSE"}
 dependencies = [
     "torch",
@@ -25,13 +25,232 @@ Icon = "https://raw.githubusercontent.com/r-vage/ComfyUI_SmartModelLoader/refs/h
 
 [tool.ruff]
 target-version = "py312"
+line-length = 120
 
 [tool.ruff.lint]
-select = ["E4", "E7", "E9", "F"]
+select = ["ALL"]
+ignore = [
+    # Ruff's preferred docstring layouts are mutually exclusive.
+    "D203",
+    "D213",
+    # This repository has no per-file copyright-header policy.
+    "CPY001",
+    # Package-relative imports are intentional for ComfyUI custom-node loading.
+    "TID252",
+    # Moving every dynamic message into a dedicated exception class would add
+    # churn without improving the public error contract.
+    "EM101",
+    "EM102",
+    "EM103",
+    # Published exception names are part of the downloader API.
+    "N818",
+    "TRY003",
+]
 
 [tool.ruff.lint.per-file-ignores]
-"__init__.py" = ["E402"]
-"core/nunchaku_wrapper.py" = ["E402", "F401", "F841"]
+"__init__.py" = ["D101", "D102", "D103", "D104", "E402", "PGH003", "PLC0415"]
+# Core helpers cross an intentionally dynamic ComfyUI/plugin boundary. Missing
+# annotations and public-docstring rules are not useful where runtime-owned
+# objects have no stable importable protocol; existing annotations remain linted.
+"core/**/*.py" = [
+    "ANN001",
+    "ANN002",
+    "ANN003",
+    "ANN201",
+    "ANN202",
+    "ANN204",
+    "ANN205",
+    "ANN206",
+    "ANN401",
+    "D100",
+    "D101",
+    "D102",
+    "D103",
+    "D104",
+    "D105",
+    "D106",
+    "D107",
+    "FBT001",
+    "FBT002",
+    "PGH003",
+    "PLC0415",
+]
+"core/__init__.py" = ["N999"]
+# Optional runtime discovery, device cleanup, and legacy progress adapters are
+# intentionally defensive and preserve ComfyUI-owned types and names.
+"core/common.py" = [
+    "ARG002", "BLE001", "C901", "DTZ005", "E501", "ERA001", "FBT003",
+    "PLR0911", "PLR0912", "PLR0915", "PLR2004", "PLW0603", "PLW1641",
+    "PTH123", "PYI063", "S104", "S110", "SIM105", "SLOT000", "T201",
+    "TC003", "TRY300",
+]
+# Cache globals and permission literals are deliberate parts of the atomic
+# configuration implementation; restructuring them would obscure locking.
+"core/config_store.py" = [
+    "E501", "PLR2004", "PLW0603", "SIM108", "TRY004", "TRY300",
+]
+# Provider queues and route registration are contract-bound state machines.
+"core/download_manager/*.py" = [
+    "C901", "E501", "FBT003", "PERF401", "PLR0911", "PLR0912", "PLR0915",
+    "PLR2004", "PLW0603", "PLW2901", "RET504", "S108", "TRY301",
+]
+# GGUF loading preserves optional imports, path strings, and loader call shape.
+"core/gguf_wrapper.py" = [
+    "BLE001", "C901", "PLR0912", "PTH110", "PTH119", "TRY300", "TRY301",
+]
+# Atomic replace and cleanup spellings intentionally mirror the locked store.
+"core/json_store.py" = ["PLR0913", "PTH105", "SIM105"]
+"core/migration.py" = ["PTH105", "SIM105"]
+# Duplicate category values and lowercase color helpers are public compatibility
+# aliases; logger print/open behavior is the logging backend itself.
+"core/keys.py" = ["PIE796"]
+"core/logger.py" = [
+    "BLE001", "C901", "ERA001", "N801", "PLR0911", "PLR2004", "PTH123",
+    "SLOT000", "T201", "TRY301",
+]
+# Loader acquisition and integrity functions bind security checks, state changes,
+# rollback, and callback signatures; splitting them would weaken auditability.
+"core/model_loader/*.py" = [
+    "C901", "FBT003", "N999", "PERF401", "PLR0911", "PLR0912", "PLR0913",
+    "PLR0915", "PLR1714", "PLR2004", "PLW0603", "PTH105", "PTH113",
+    "PTH119", "PTH122", "SIM105", "TC001", "TC003", "TRY300", "TRY301",
+]
+# Shared loader schemas and ComfyUI model adapters retain private runtime access,
+# positional contracts, and model-path strings.
+"core/model_loader_common.py" = [
+    "C901", "E501", "PLR0911", "PLR0912", "PLR0913", "PLR0915", "PLR0917",
+    "PLR1714", "PLR2004", "PTH113", "PTH122", "SIM108", "SLF001", "TRY300",
+]
+# Hardware orchestration mirrors Nunchaku tensor names and optional internals.
+"core/nunchaku_wrapper.py" = [
+    "ARG002", "ARG005", "BLE001", "C901", "E402", "ERA001", "F401", "F841",
+    "FURB110", "N803", "N806", "PLR0912", "PLR0913", "PLR0915", "PLR0917",
+    "PLR2004", "PTH110", "PTH113", "PTH119", "RET503", "S110", "SIM105",
+    "SIM108", "SLF001", "TRY300", "UP035",
+]
+# Nested aiohttp handlers and endpoint registration preserve route contracts;
+# synchronous path checks are bounded local metadata operations.
+"core/server_endpoints.py" = [
+    "ARG001", "ASYNC240", "C901", "FBT003", "PLR0911", "PLR0912", "PLR0915",
+    "PLR2004", "PLW0603", "PLW2901", "PTH100", "PTH110", "PTH113", "PTH118",
+    "PTH120", "SIM105", "SLF001",
+]
+# ComfyUI V3 determines these node names and callback signatures. The historic
+# Rv identifiers and loosely typed runtime payloads are serialization contracts.
+"py/Rv*.py" = [
+    "ANN001",
+    "ANN003",
+    "ANN201",
+    "ANN202",
+    "ANN206",
+    "ANN401",
+    "ARG003",
+    "D100",
+    "D101",
+    "D102",
+    "D103",
+    # Tooltip text is serialized user-facing schema data and should remain whole.
+    "E501",
+    "FBT001",
+    "FBT002",
+    "N801",
+    "N999",
+    "PLR2004",
+    "PGH003",
+]
+"py/RvCond_CLIPTextEncodeAdvanced.py" = [
+    "BLE001", "FBT003", "PLC0415", "PLR0913", "PLR0917", "S110",
+]
+"py/RvLoader_SmartModelLoader.py" = ["FURB110", "PLW0603"]
+# Sampling is a single ComfyUI callback contract. Local time names preview files,
+# and random values are workflow seeds rather than security tokens.
+"py/RvSampler_KSamplerPipe.py" = [
+    "C901", "DTZ005", "ERA001", "PLR0912", "PLR0913", "PLR0915", "PLR0917",
+    "PLW0603", "S311", "SIM108", "TRY004",
+]
+"py/__init__.py" = ["D104", "N999"]
+# Bundled integrations retain upstream public names, call signatures, docstring
+# conventions, logging, assertions, lazy imports, and orchestration structure.
+# Correctness and safe-modernization rules outside this list remain enforced.
+"extern/**/*.py" = [
+    "A001",
+    "A002",
+    "ANN001",
+    "ANN002",
+    "ANN003",
+    "ANN201",
+    "ANN202",
+    "ANN204",
+    "ANN206",
+    "ARG001",
+    "ARG002",
+    "ARG004",
+    "ARG005",
+    "BLE001",
+    "B007",
+    "C901",
+    "D100",
+    "D101",
+    "D102",
+    "D103",
+    "D104",
+    "D105",
+    "D106",
+    "D107",
+    "D200",
+    "D205",
+    "D400",
+    "D404",
+    "D415",
+    "D417",
+    "ERA001",
+    "E501",
+    "FBT001",
+    "FBT002",
+    "FIX002",
+    "G001",
+    "G003",
+    "G004",
+    "LOG015",
+    "N801",
+    "N802",
+    "N803",
+    "N804",
+    "N805",
+    "N806",
+    "N812",
+    "PGH003",
+    "PIE810",
+    "PLC0415",
+    "PLR1714",
+    "PLR2004",
+    "PLR0911",
+    "PLR0912",
+    "PLR0913",
+    "PLR0915",
+    "PLR0917",
+    "RUF012",
+    "RUF013",
+    "S101",
+    "S110",
+    "S112",
+    "SIM105",
+    "SIM108",
+    "SLF001",
+    "TD002",
+    "TD003",
+    "PLW2901",
+    "PTH113",
+    "PTH118",
+    "PTH119",
+    "PTH120",
+    "PTH122",
+    "PTH208",
+    "PT018",
+    "PYI024",
+    "RET504",
+    "TRY004",
+]
 "extern/gguf/__init__.py" = ["F401"]
 "extern/gguf/loader.py" = ["E721", "E722", "E731"]
 "extern/nunchaku/__init__.py" = ["F401"]

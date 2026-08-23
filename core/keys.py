@@ -1,7 +1,7 @@
+from collections.abc import Iterable
 from enum import Enum
-from typing import Iterable
 
-__all__ = ["TEXTS", "CATEGORY", "KEYS", "category_display"]
+__all__ = ["CATEGORY", "KEYS", "TEXTS", "category_display"]
 
 
 class TEXTS(Enum):

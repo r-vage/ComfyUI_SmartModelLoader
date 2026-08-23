@@ -1,10 +1,9 @@
-"""
-This module provides a wrapper for the :class:`~nunchaku.models.transformers.transformer_flux.NunchakuFluxTransformer2dModel`,
+"""This module provides a wrapper for the :class:`~nunchaku.models.transformers.transformer_flux.NunchakuFluxTransformer2dModel`,
 enabling integration with ComfyUI forward,
 LoRA composition, and advanced caching strategies.
 """
 
-from typing import Callable, Tuple
+from collections.abc import Callable
 
 import torch  # type: ignore
 from comfy.ldm.common_dit import pad_to_patch_size  # type: ignore
@@ -19,8 +18,7 @@ from nunchaku.utils import load_state_dict_in_safetensors  # type: ignore
 
 
 class ComfyFluxWrapper(nn.Module):
-    """
-    Wrapper for :class:`~nunchaku.models.transformers.transformer_flux.NunchakuFluxTransformer2dModel`
+    """Wrapper for :class:`~nunchaku.models.transformers.transformer_flux.NunchakuFluxTransformer2dModel`
     to support ComfyUI workflows, LoRA composition, and caching.
 
     Parameters
@@ -56,6 +54,7 @@ class ComfyFluxWrapper(nn.Module):
         Additional arguments for the forward pass.
     ctx_for_copy:
         A dict that holds initialization context for later duplication of this ComfyFluxWrapper object.
+
     """
 
     def __init__(
@@ -64,10 +63,10 @@ class ComfyFluxWrapper(nn.Module):
         config,
         pulid_pipeline=None,
         customized_forward: Callable = None,
-        forward_kwargs: dict | None = {},
-        ctx_for_copy: dict = {},
+        forward_kwargs: dict | None = None,
+        ctx_for_copy: dict | None = None,
     ):
-        super(ComfyFluxWrapper, self).__init__()
+        super().__init__()
         self.model = model
         self.dtype = next(model.parameters()).dtype
         self.config = config
@@ -77,14 +76,13 @@ class ComfyFluxWrapper(nn.Module):
         self.customized_forward = customized_forward
         self.forward_kwargs = {} if forward_kwargs is None else forward_kwargs
 
-        self.ctx_for_copy = ctx_for_copy.copy()
+        self.ctx_for_copy = {} if ctx_for_copy is None else ctx_for_copy.copy()
 
         self._prev_timestep = None  # for first-block cache
         self._cache_context = None
 
     def process_img(self, x, index=0, h_offset=0, w_offset=0):
-        """
-        Preprocess an input image tensor for the model.
+        """Preprocess an input image tensor for the model.
 
         Pads and rearranges the image into patches and generates corresponding image IDs.
 
@@ -105,13 +103,14 @@ class ComfyFluxWrapper(nn.Module):
             Rearranged image tensor of shape (batch, num_patches, patch_dim).
         img_ids : torch.Tensor
             Image ID tensor of shape (batch, num_patches, 3).
+
         """
-        bs, c, h, w = x.shape
+        bs, _c, h, w = x.shape
         patch_size = self.config.get("patch_size", 2)
         x = pad_to_patch_size(x, (patch_size, patch_size))
 
         img = rearrange(
-            x, "b c (h ph) (w pw) -> b (h w) (c ph pw)", ph=patch_size, pw=patch_size
+            x, "b c (h ph) (w pw) -> b (h w) (c ph pw)", ph=patch_size, pw=patch_size,
         )
         h_len = (h + (patch_size // 2)) // patch_size
         w_len = (w + (patch_size // 2)) // patch_size
@@ -122,10 +121,10 @@ class ComfyFluxWrapper(nn.Module):
         img_ids = torch.zeros((h_len, w_len, 3), device=x.device, dtype=x.dtype)
         img_ids[:, :, 0] = img_ids[:, :, 1] + index
         img_ids[:, :, 1] = img_ids[:, :, 1] + torch.linspace(
-            h_offset, h_len - 1 + h_offset, steps=h_len, device=x.device, dtype=x.dtype
+            h_offset, h_len - 1 + h_offset, steps=h_len, device=x.device, dtype=x.dtype,
         ).unsqueeze(1)
         img_ids[:, :, 2] = img_ids[:, :, 2] + torch.linspace(
-            w_offset, w_len - 1 + w_offset, steps=w_len, device=x.device, dtype=x.dtype
+            w_offset, w_len - 1 + w_offset, steps=w_len, device=x.device, dtype=x.dtype,
         ).unsqueeze(0)
         return img, repeat(img_ids, "h w c -> b (h w) c", b=bs)
 
@@ -137,11 +136,10 @@ class ComfyFluxWrapper(nn.Module):
         y,
         guidance,
         control=None,
-        transformer_options={},
+        transformer_options=None,
         **kwargs,
     ):
-        """
-        Forward pass for the wrapped model.
+        """Forward pass for the wrapped model.
 
         Handles LoRA composition, caching, PuLID integration, and reference latents.
 
@@ -168,7 +166,11 @@ class ComfyFluxWrapper(nn.Module):
         -------
         out : torch.Tensor
             Output tensor of the same spatial size as the input.
+
         """
+        if transformer_options is None:
+            transformer_options = {}
+
         if isinstance(timestep, torch.Tensor):
             if timestep.numel() == 1:
                 timestep_float = timestep.item()
@@ -181,7 +183,7 @@ class ComfyFluxWrapper(nn.Module):
         model = self.model
         assert isinstance(model, NunchakuFluxTransformer2dModel)
 
-        bs, c, h_orig, w_orig = x.shape
+        bs, _c, h_orig, w_orig = x.shape
         patch_size = self.config.get("patch_size", 2)
         h_len = (h_orig + (patch_size // 2)) // patch_size
         w_len = (w_orig + (patch_size // 2)) // patch_size
@@ -202,7 +204,7 @@ class ComfyFluxWrapper(nn.Module):
                     h_offset = h
 
                 kontext, kontext_ids = self.process_img(
-                    ref, index=1, h_offset=h_offset, w_offset=w_offset
+                    ref, index=1, h_offset=h_offset, w_offset=w_offset,
                 )
                 img = torch.cat([img, kontext], dim=1)
                 img_ids = torch.cat([img_ids, kontext_ids], dim=1)
@@ -229,7 +231,7 @@ class ComfyFluxWrapper(nn.Module):
                         model.comfy_lora_sd_list[i] = sd
                     model.comfy_lora_meta_list[i] = meta
                 lora_to_be_composed.append(
-                    ({k: v for k, v in model.comfy_lora_sd_list[i].items()}, meta[1])
+                    (dict(model.comfy_lora_sd_list[i].items()), meta[1]),
                 )
 
             composed_lora = compose_lora(lora_to_be_composed)
@@ -280,7 +282,7 @@ class ComfyFluxWrapper(nn.Module):
             self.model.transformer_blocks[0].pulid_ca = self.pulid_pipeline.pulid_ca
 
         if getattr(model, "residual_diff_threshold_multi", 0) != 0 or getattr(
-            model, "_is_cached", False
+            model, "_is_cached", False,
         ):
             # A more robust caching strategy
             cache_invalid = False
@@ -325,33 +327,32 @@ class ComfyFluxWrapper(nn.Module):
                         controlnet_single_block_samples=controlnet_single_block_samples,
                         **self.forward_kwargs,
                     ).sample
+        elif self.customized_forward is None:
+            out = model(
+                hidden_states=img,
+                encoder_hidden_states=context,
+                pooled_projections=y,
+                timestep=timestep,
+                img_ids=img_ids,
+                txt_ids=txt_ids,
+                guidance=guidance if self.config["guidance_embed"] else None,
+                controlnet_block_samples=controlnet_block_samples,
+                controlnet_single_block_samples=controlnet_single_block_samples,
+            ).sample
         else:
-            if self.customized_forward is None:
-                out = model(
-                    hidden_states=img,
-                    encoder_hidden_states=context,
-                    pooled_projections=y,
-                    timestep=timestep,
-                    img_ids=img_ids,
-                    txt_ids=txt_ids,
-                    guidance=guidance if self.config["guidance_embed"] else None,
-                    controlnet_block_samples=controlnet_block_samples,
-                    controlnet_single_block_samples=controlnet_single_block_samples,
-                ).sample
-            else:
-                out = self.customized_forward(
-                    model,
-                    hidden_states=img,
-                    encoder_hidden_states=context,
-                    pooled_projections=y,
-                    timestep=timestep,
-                    img_ids=img_ids,
-                    txt_ids=txt_ids,
-                    guidance=guidance if self.config["guidance_embed"] else None,
-                    controlnet_block_samples=controlnet_block_samples,
-                    controlnet_single_block_samples=controlnet_single_block_samples,
-                    **self.forward_kwargs,
-                ).sample
+            out = self.customized_forward(
+                model,
+                hidden_states=img,
+                encoder_hidden_states=context,
+                pooled_projections=y,
+                timestep=timestep,
+                img_ids=img_ids,
+                txt_ids=txt_ids,
+                guidance=guidance if self.config["guidance_embed"] else None,
+                controlnet_block_samples=controlnet_block_samples,
+                controlnet_single_block_samples=controlnet_single_block_samples,
+                **self.forward_kwargs,
+            ).sample
         if self.pulid_pipeline is not None:
             self.model.transformer_blocks[0].pulid_ca = None
 
@@ -372,9 +373,8 @@ class ComfyFluxWrapper(nn.Module):
 
 def copy_with_ctx(
     model_wrapper: ComfyFluxWrapper,
-) -> Tuple[ComfyFluxWrapper, ModelPatcher]:
-    """
-    Duplicates a ComfyFluxWrapper object with it's initialization context such as comfy_config, model_config, device and device_id.
+) -> tuple[ComfyFluxWrapper, ModelPatcher]:
+    """Duplicates a ComfyFluxWrapper object with it's initialization context such as comfy_config, model_config, device and device_id.
 
     Also create a ModelPatcher object that holds the model_base object created by the model_config.
 
@@ -387,6 +387,7 @@ def copy_with_ctx(
     -------
     tuple[ComfyFluxWrapper, ModelPatcher]
         the copied ComfyFluxWrapper object and the created ModelPatcher object.
+
     """
     ctx_for_copy = model_wrapper.ctx_for_copy
     for key in ("comfy_config", "model_config", "device", "device_id"):
@@ -394,7 +395,7 @@ def copy_with_ctx(
             raise KeyError(
                 f"ctx_for_copy is missing '{key}'. The model wrapper was likely re-created "
                 "without preserving ctx_for_copy. Ensure all code paths that create "
-                "ComfyFluxWrapper pass ctx_for_copy from the original wrapper."
+                "ComfyFluxWrapper pass ctx_for_copy from the original wrapper.",
             )
     ret_model_wrapper: ComfyFluxWrapper = ComfyFluxWrapper(
         model_wrapper.model,
@@ -431,6 +432,6 @@ def copy_with_ctx(
                 pass
     model_base.diffusion_model = ret_model_wrapper
     ret_model = ModelPatcher(
-        model_base, ctx_for_copy["device"], ctx_for_copy["device_id"]
+        model_base, ctx_for_copy["device"], ctx_for_copy["device_id"],
     )
     return ret_model_wrapper, ret_model

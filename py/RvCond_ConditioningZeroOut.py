@@ -1,6 +1,7 @@
-import torch  # type: ignore
 import comfy.supported_models  # type: ignore
+import torch  # type: ignore
 from comfy_api.latest import io  # type: ignore
+
 from ..core import CATEGORY
 from ..core.logger import log
 
@@ -65,7 +66,7 @@ class RvCond_ConditioningZeroOut(io.ComfyNode):
             "or set max_tokens manually. 0 = keep original size (pure zero-out).",
             inputs=[
                 io.Conditioning.Input(
-                    "conditioning", tooltip="The conditioning to zero out."
+                    "conditioning", tooltip="The conditioning to zero out.",
                 ),
                 io.Model.Input(
                     "model",
@@ -83,7 +84,7 @@ class RvCond_ConditioningZeroOut(io.ComfyNode):
             ],
             outputs=[
                 io.Conditioning.Output(
-                    "conditioning", tooltip="Zeroed-out conditioning."
+                    "conditioning", tooltip="Zeroed-out conditioning.",
                 ),
             ],
         )
@@ -102,7 +103,7 @@ class RvCond_ConditioningZeroOut(io.ComfyNode):
                 )
             else:
                 log.debug(
-                    _LOG_PREFIX, "Model connected but type unknown, no truncation"
+                    _LOG_PREFIX, "Model connected but type unknown, no truncation",
                 )
         elif truncate > 0:
             log.debug(_LOG_PREFIX, f"Manual max_tokens override: {truncate}")
@@ -128,13 +129,13 @@ class RvCond_ConditioningZeroOut(io.ComfyNode):
                 )
                 n = [
                     torch.zeros(
-                        (1, truncate, channels), dtype=t[0].dtype, device=t[0].device
+                        (1, truncate, channels), dtype=t[0].dtype, device=t[0].device,
                     ),
                     d,
                 ]
             else:
                 log.debug(
-                    _LOG_PREFIX, f"Cond [{i}]: zero-out, shape {tuple(t[0].shape)}"
+                    _LOG_PREFIX, f"Cond [{i}]: zero-out, shape {tuple(t[0].shape)}",
                 )
                 n = [torch.zeros_like(t[0]), d]
             c.append(n)

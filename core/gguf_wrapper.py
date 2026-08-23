@@ -9,9 +9,11 @@
 # - Support for dequantization and patch dtype control
 # - Compatible with ComfyUI ModelPatcher interface via GGUFModelPatcher
 
-import os
 import inspect
-from typing import Optional, Any, Callable
+import os
+from collections.abc import Callable
+from typing import Any
+
 import torch  # type: ignore
 
 from .logger import log
@@ -23,16 +25,16 @@ log.debug(_LOG_PREFIX, "Module loading started...")
 
 # Import GGUF from vendored extern package - no external custom node dependency
 GGUF_AVAILABLE = False
-GGMLOps: Optional[Any] = None
-gguf_sd_loader: Optional[Callable[..., tuple[dict, dict]]] = None
-gguf_clip_loader: Optional[Callable[[str], dict]] = None
-GGUFModelPatcher: Optional[Any] = None
+GGMLOps: Any | None = None
+gguf_sd_loader: Callable[..., tuple[dict, dict]] | None = None
+gguf_clip_loader: Callable[[str], dict] | None = None
+GGUFModelPatcher: Any | None = None
 
 try:
-    from ..extern.gguf.ops import GGMLOps as _GGMLOps
-    from ..extern.gguf.loader import gguf_sd_loader as _gguf_sd_loader
     from ..extern.gguf.loader import gguf_clip_loader as _gguf_clip_loader
+    from ..extern.gguf.loader import gguf_sd_loader as _gguf_sd_loader
     from ..extern.gguf.nodes import GGUFModelPatcher as _GGUFModelPatcher
+    from ..extern.gguf.ops import GGMLOps as _GGMLOps
 
     GGMLOps = _GGMLOps
     gguf_sd_loader = _gguf_sd_loader
@@ -50,11 +52,11 @@ except Exception as e:
 comfy: Any = None
 folder_paths: Any = None
 try:
+    import comfy  # type: ignore
+    import comfy.model_management  # type: ignore
     import comfy.sd  # type: ignore
     import comfy.utils  # type: ignore
-    import comfy.model_management  # type: ignore
     import folder_paths  # type: ignore
-    import comfy  # type: ignore
 except ImportError:
     pass
 
@@ -111,7 +113,7 @@ def load_gguf_model(
             "Installation:\n"
             "  pip install --upgrade gguf\n\n"
             "Then restart ComfyUI.\n\n"
-            "Alternatively, use a standard (non-quantized) model."
+            "Alternatively, use a standard (non-quantized) model.",
         )
 
     # Validate model file exists
@@ -121,7 +123,7 @@ def load_gguf_model(
     # Validate file extension
     if not detect_gguf_model(model_path):
         raise ValueError(
-            f"Not a GGUF model file (expected .gguf extension): {model_path}"
+            f"Not a GGUF model file (expected .gguf extension): {model_path}",
         )
 
     log.msg(_LOG_PREFIX, f"Loading quantized model: {os.path.basename(model_path)}")
@@ -162,7 +164,7 @@ def load_gguf_model(
         log.msg(_LOG_PREFIX, "Loading diffusion model...")
         kwargs = {}
         valid_params = inspect.signature(
-            comfy.sd.load_diffusion_model_state_dict
+            comfy.sd.load_diffusion_model_state_dict,
         ).parameters
         if "metadata" in valid_params:
             kwargs["metadata"] = extra.get("metadata", {})
@@ -182,7 +184,7 @@ def load_gguf_model(
         model.patch_on_device = patch_on_device  # type: ignore
 
         log.msg(
-            _LOG_PREFIX, f"✓ Model loaded successfully: {os.path.basename(model_path)}"
+            _LOG_PREFIX, f"✓ Model loaded successfully: {os.path.basename(model_path)}",
         )
 
         return model
@@ -194,8 +196,8 @@ def load_gguf_model(
             f"  - Corrupted model file\n"
             f"  - Incompatible GGUF version\n"
             f"  - Unsupported model architecture\n"
-            f"  - Missing gguf Python package (pip install --upgrade gguf)\n"
-        )
+            f"  - Missing gguf Python package (pip install --upgrade gguf)\n",
+        ) from e
 
 
 def load_gguf_clip(
@@ -222,7 +224,7 @@ def load_gguf_clip(
             "The 'gguf' pip package is required to load GGUF text encoders.\n\n"
             "Installation:\n"
             "  pip install --upgrade gguf\n\n"
-            "Then restart ComfyUI."
+            "Then restart ComfyUI.",
         )
 
     if GGMLOps is None or gguf_clip_loader is None or GGUFModelPatcher is None:
@@ -263,17 +265,17 @@ def load_gguf_clip(
             f"This might indicate:\n"
             f"  - Corrupted text encoder file\n"
             f"  - Incompatible GGUF version\n"
-            f"  - Missing gguf Python package (pip install --upgrade gguf)\n"
-        )
+            f"  - Missing gguf Python package (pip install --upgrade gguf)\n",
+        ) from e
 
 
 # Export public API
 __all__ = [
-    "is_gguf_available",
-    "detect_gguf_model",
-    "load_gguf_model",
-    "load_gguf_clip",
     "GGUF_AVAILABLE",
+    "detect_gguf_model",
+    "is_gguf_available",
+    "load_gguf_clip",
+    "load_gguf_model",
 ]
 
 log.msg(_LOG_PREFIX, f"Module loaded. GGUF available: {GGUF_AVAILABLE}")

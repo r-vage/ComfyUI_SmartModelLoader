@@ -1,13 +1,15 @@
 # (c) City96 || Apache-2.0 (apache.org/licenses/LICENSE-2.0)
-import warnings
 import logging
-import torch
-import gguf
-import re
 import os
+import re
+import warnings
 
+import torch
+
+import gguf
+
+from .dequant import dequantize_tensor, is_quantized
 from .ops import GGMLTensor
-from .dequant import is_quantized, dequantize_tensor
 
 IMG_ARCH_LIST = {
     "flux",
@@ -39,7 +41,7 @@ def get_orig_shape(reader, tensor_name):
         or field.types[1] != gguf.GGUFValueType.INT32
     ):
         raise TypeError(
-            f"Bad original shape metadata for {field_key}: Expected ARRAY of INT32, got {field.types}"
+            f"Bad original shape metadata for {field_key}: Expected ARRAY of INT32, got {field.types}",
         )
     return torch.Size(tuple(int(field.parts[part_idx][0]) for part_idx in field.data))
 
@@ -48,31 +50,29 @@ def get_field(reader, field_name, field_type):
     field = reader.get_field(field_name)
     if field is None:
         return None
-    elif field_type == str:
+    if field_type == str:
         # extra check here as this is used for checking arch string
         if len(field.types) != 1 or field.types[0] != gguf.GGUFValueType.STRING:
             raise TypeError(
-                f"Bad type for GGUF {field_name} key: expected string, got {field.types!r}"
+                f"Bad type for GGUF {field_name} key: expected string, got {field.types!r}",
             )
         return str(field.parts[field.data[-1]], encoding="utf-8")
-    elif field_type in [int, float, bool]:
+    if field_type in [int, float, bool]:
         return field_type(field.parts[field.data[-1]].item())
-    else:
-        raise TypeError(f"Unknown field type {field_type}")
+    raise TypeError(f"Unknown field type {field_type}")
 
 
 def get_list_field(reader, field_name, field_type):
     field = reader.get_field(field_name)
     if field is None:
         return None
-    elif field_type == str:
+    if field_type == str:
         return tuple(
             str(field.parts[part_idx], encoding="utf-8") for part_idx in field.data
         )
-    elif field_type in [int, float, bool]:
+    if field_type in [int, float, bool]:
         return tuple(field_type(field.parts[part_idx][0]) for part_idx in field.data)
-    else:
-        raise TypeError(f"Unknown field type {field_type}")
+    raise TypeError(f"Unknown field type {field_type}")
 
 
 def get_gguf_metadata(reader):
@@ -96,8 +96,7 @@ def get_gguf_metadata(reader):
 
 
 def gguf_sd_loader(path, handle_prefix="model.diffusion_model.", is_text_model=False):
-    """
-    Read state dict as fake tensors
+    """Read state dict as fake tensors
     """
     reader = gguf.GGUFReader(path)
 
@@ -105,7 +104,7 @@ def gguf_sd_loader(path, handle_prefix="model.diffusion_model.", is_text_model=F
     has_prefix = False
     if handle_prefix is not None:
         prefix_len = len(handle_prefix)
-        tensor_names = set(tensor.name for tensor in reader.tensors)
+        tensor_names = {tensor.name for tensor in reader.tensors}
         has_prefix = any(s.startswith(handle_prefix) for s in tensor_names)
 
     tensors = []
@@ -124,27 +123,27 @@ def gguf_sd_loader(path, handle_prefix="model.diffusion_model.", is_text_model=F
     if arch_str in [None, "pig", "cow"]:
         if is_text_model:
             raise ValueError(
-                f"This gguf file is incompatible with llama.cpp!\nConsider using safetensors or a compatible gguf file\n({path})"
+                f"This gguf file is incompatible with llama.cpp!\nConsider using safetensors or a compatible gguf file\n({path})",
             )
         compat = "sd.cpp" if arch_str is None else arch_str
         # import here to avoid changes to convert.py breaking regular models
         from .tools.convert import detect_arch
 
         try:
-            arch_str = detect_arch(set(val[0] for val in tensors)).arch
+            arch_str = detect_arch({val[0] for val in tensors}).arch
         except Exception as e:
-            raise ValueError(f"This model is not currently supported - ({e})")
+            raise ValueError(f"This model is not currently supported - ({e})") from e
     elif arch_str not in TXT_ARCH_LIST and is_text_model:
         if type_str not in VIS_TYPE_LIST:
             raise ValueError(
-                f"Unexpected text model architecture type in GGUF file: {arch_str!r}"
+                f"Unexpected text model architecture type in GGUF file: {arch_str!r}",
             )
     elif arch_str not in IMG_ARCH_LIST and not is_text_model:
         raise ValueError(f"Unexpected architecture type in GGUF file: {arch_str!r}")
 
     if compat:
         logging.warning(
-            f"Warning: This gguf model file is loaded in compatibility mode '{compat}' [arch:{arch_str}]"
+            f"Warning: This gguf model file is loaded in compatibility mode '{compat}' [arch:{arch_str}]",
         )
 
     # main loading loop
@@ -157,7 +156,7 @@ def gguf_sd_loader(path, handle_prefix="model.diffusion_model.", is_text_model=F
         # NOTE: line above replaced with this block to avoid persistent numpy warning about mmap
         with warnings.catch_warnings():
             warnings.filterwarnings(
-                "ignore", message="The given NumPy array is not writable"
+                "ignore", message="The given NumPy array is not writable",
             )
             torch_tensor = torch.from_numpy(tensor.data)  # mmap
 
@@ -165,15 +164,12 @@ def gguf_sd_loader(path, handle_prefix="model.diffusion_model.", is_text_model=F
         if shape is None:
             shape = torch.Size(tuple(int(v) for v in reversed(tensor.shape)))
             # Workaround for stable-diffusion.cpp SDXL detection.
-            if compat == "sd.cpp" and arch_str == "sdxl":
-                if any(
-                    [
-                        tensor_name.endswith(x)
-                        for x in (".proj_in.weight", ".proj_out.weight")
-                    ]
-                ):
-                    while len(shape) > 2 and shape[-1] == 1:
-                        shape = shape[:-1]
+            if compat == "sd.cpp" and arch_str == "sdxl" and any(
+                tensor_name.endswith(x)
+                    for x in (".proj_in.weight", ".proj_out.weight")
+            ):
+                while len(shape) > 2 and shape[-1] == 1:
+                    shape = shape[:-1]
 
         # add to state dict
         if tensor.tensor_type in {
@@ -182,13 +178,13 @@ def gguf_sd_loader(path, handle_prefix="model.diffusion_model.", is_text_model=F
         }:
             torch_tensor = torch_tensor.view(*shape)
         state_dict[sd_key] = GGMLTensor(
-            torch_tensor, tensor_type=tensor.tensor_type, tensor_shape=shape
+            torch_tensor, tensor_type=tensor.tensor_type, tensor_shape=shape,
         )
 
         # 1D tensors shouldn't be quantized, this is a fix for BF16
         if len(shape) <= 1 and tensor.tensor_type == gguf.GGMLQuantizationType.BF16:
             state_dict[sd_key] = dequantize_tensor(
-                state_dict[sd_key], dtype=torch.float32
+                state_dict[sd_key], dtype=torch.float32,
             )
 
         # keep track of loaded tensor types
@@ -197,7 +193,7 @@ def gguf_sd_loader(path, handle_prefix="model.diffusion_model.", is_text_model=F
 
     # print loaded tensor type counts
     logging.info(
-        "gguf qtypes: " + ", ".join(f"{k} ({v})" for k, v in qtype_dict.items())
+        "gguf qtypes: " + ", ".join(f"{k} ({v})" for k, v in qtype_dict.items()),
     )
 
     # mark largest tensor for vram estimation
@@ -254,7 +250,7 @@ GEMMA3_SD_MAP.update(
         "ffn_norm": "pre_feedforward_layernorm",
         "post_ffw_norm": "post_feedforward_layernorm",
         "post_attention_norm": "post_attention_layernorm",
-    }
+    },
 )
 
 CLIP_VISION_SD_MAP = {
@@ -351,12 +347,12 @@ def gguf_mmproj_loader(path):
 
     if len(target) == 0:
         logging.error(
-            f"Error: Can't find mmproj file for '{tenc_fname}' (matching:'{tenc}')! Qwen-Image-Edit will be broken!"
+            f"Error: Can't find mmproj file for '{tenc_fname}' (matching:'{tenc}')! Qwen-Image-Edit will be broken!",
         )
         return {}
     if len(target) > 1:
         logging.error(
-            f"Ambiguous mmproj for text encoder '{tenc_fname}', will use first match."
+            f"Ambiguous mmproj for text encoder '{tenc_fname}', will use first match.",
         )
 
     logging.info(f"Using mmproj '{target[0]}' for text encoder '{tenc_fname}'.")
@@ -383,7 +379,7 @@ def gguf_mmproj_loader(path):
                 if k_attn not in attns:
                     attns[k_attn] = {}
                 attns[k_attn][k_name] = dequantize_tensor(
-                    v, dtype=(torch.bfloat16 if is_quantized(v) else torch.float16)
+                    v, dtype=(torch.bfloat16 if is_quantized(v) else torch.float16),
                 )
 
         # recombine
@@ -405,38 +401,38 @@ def gguf_mmproj_loader(path):
 def gguf_tokenizer_loader(path, temb_shape):
     # convert gguf tokenizer to spiece
     logging.info(
-        "Attempting to recreate sentencepiece tokenizer from GGUF file metadata..."
+        "Attempting to recreate sentencepiece tokenizer from GGUF file metadata...",
     )
     try:
         from sentencepiece import sentencepiece_model_pb2 as model
     except ImportError:
         raise ImportError(
-            "Please make sure sentencepiece and protobuf are installed.\npip install sentencepiece protobuf"
-        )
+            "Please make sure sentencepiece and protobuf are installed.\npip install sentencepiece protobuf",
+        ) from None
     spm = model.ModelProto()
 
     reader = gguf.GGUFReader(path)
 
     if get_field(reader, "tokenizer.ggml.model", str) == "t5":
         if temb_shape == (256384, 4096):  # probably UMT5
-            spm.trainer_spec.model_type == 1  # Unigram (do we have a T5 w/ BPE?)
+            spm.trainer_spec.model_type = 1  # Unigram (do we have a T5 w/ BPE?)
         else:
             raise NotImplementedError("Unknown model, can't set tokenizer!")
     else:
         raise NotImplementedError("Unknown model, can't set tokenizer!")
 
     spm.normalizer_spec.add_dummy_prefix = get_field(
-        reader, "tokenizer.ggml.add_space_prefix", bool
+        reader, "tokenizer.ggml.add_space_prefix", bool,
     )
     spm.normalizer_spec.remove_extra_whitespaces = get_field(
-        reader, "tokenizer.ggml.remove_extra_whitespaces", bool
+        reader, "tokenizer.ggml.remove_extra_whitespaces", bool,
     )
 
     tokens = get_list_field(reader, "tokenizer.ggml.tokens", str)
     scores = get_list_field(reader, "tokenizer.ggml.scores", float)
     toktypes = get_list_field(reader, "tokenizer.ggml.token_type", int)
 
-    for idx, (token, score, toktype) in enumerate(zip(tokens, scores, toktypes)):
+    for _idx, (token, score, toktype) in enumerate(zip(tokens, scores, toktypes, strict=False)):
         # # These aren't present in the original?
         # if toktype == 5 and idx >= temb_shape[0]%1000):
         #     continue
@@ -462,8 +458,9 @@ def gguf_tokenizer_loader(path, temb_shape):
 def gguf_tekken_tokenizer_loader(path, temb_shape):
     # convert ggml (hf) tokenizer metadata to tekken/comfy data
     logging.info("Attempting to recreate tekken tokenizer from GGUF file metadata...")
-    import json
     import base64
+    import json
+
     from transformers.convert_slow_tokenizer import bytes_to_unicode
 
     reader = gguf.GGUFReader(path)
@@ -485,10 +482,10 @@ def gguf_tekken_tokenizer_loader(path, temb_shape):
     toktypes = get_list_field(reader, "tokenizer.ggml.token_type", int)
 
     decoder = {v: k for k, v in bytes_to_unicode().items()}
-    for idx, (token, toktype) in enumerate(zip(tokens, toktypes)):
+    for idx, (token, toktype) in enumerate(zip(tokens, toktypes, strict=False)):
         if toktype == 3:
             data["special_tokens"].append(
-                {"rank": idx, "token_str": token, "is_control": True}
+                {"rank": idx, "token_str": token, "is_control": True},
             )
         else:
             tok = bytes([decoder[char] for char in token])
@@ -497,11 +494,11 @@ def gguf_tekken_tokenizer_loader(path, temb_shape):
                     "rank": len(data["vocab"]),
                     "token_bytes": base64.b64encode(tok).decode("ascii"),
                     "token_str": tok.decode("utf-8", errors="replace"),  # ?
-                }
+                },
             )
 
     logging.info(
-        f"Created tekken tokenizer with vocab size of {len(data['vocab'])} (+{len(data['special_tokens'])})"
+        f"Created tekken tokenizer with vocab size of {len(data['vocab'])} (+{len(data['special_tokens'])})",
     )
     del reader
     return torch.ByteTensor(list(json.dumps(data).encode("utf-8")))
@@ -510,14 +507,14 @@ def gguf_tekken_tokenizer_loader(path, temb_shape):
 def gguf_gemma3_tokenizer_loader(path):
     # TODO: merge into gguf_tokenizer_loader
     logging.info(
-        "Attempting to recreate sentencepiece tokenizer from GGUF file metadata..."
+        "Attempting to recreate sentencepiece tokenizer from GGUF file metadata...",
     )
     try:
         from sentencepiece import sentencepiece_model_pb2 as model
     except ImportError:
         raise ImportError(
-            "Please install sentencepiece and protobuf.\npip install sentencepiece protobuf"
-        )
+            "Please install sentencepiece and protobuf.\npip install sentencepiece protobuf",
+        ) from None
     spm = model.ModelProto()
     reader = gguf.GGUFReader(path)
 
@@ -573,7 +570,7 @@ def gguf_clip_loader(path):
             if arch == "llama" and sd[temb_key].shape == (131072, 5120):
                 # non-standard Comfy-Org tokenizer
                 sd["tekken_model"] = gguf_tekken_tokenizer_loader(
-                    path, sd[temb_key].shape
+                    path, sd[temb_key].shape,
                 )
             elif arch == "gemma3":
                 sd["spiece_model"] = gguf_gemma3_tokenizer_loader(path)

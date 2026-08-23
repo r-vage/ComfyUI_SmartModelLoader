@@ -1,11 +1,13 @@
 # (c) City96 || Apache-2.0 (apache.org/licenses/LICENSE-2.0)
-import os
-import gguf
-import torch
-import logging
 import argparse
-from tqdm import tqdm
+import logging
+import os
+
+import torch
 from safetensors.torch import load_file, save_file
+from tqdm import tqdm
+
+import gguf
 
 QUANTIZATION_THRESHOLD = 1024
 REARRANGE_THRESHOLD = 512
@@ -23,7 +25,7 @@ class ModelTemplate:
 
     def handle_nd_tensor(self, key, data):
         raise NotImplementedError(
-            f"Tensor detected that exceeds dims supported by C++ code! ({key} @ {data.shape})"
+            f"Tensor detected that exceeds dims supported by C++ code! ({key} @ {data.shape})",
         )
 
 
@@ -66,7 +68,7 @@ class ModelHiDream(ModelTemplate):
         (
             "caption_projection.0.linear.weight",
             "double_stream_blocks.0.block.ff_i.shared_experts.w3.weight",
-        )
+        ),
     ]
     keys_hiprec = [
         # nn.parameter, can't load from BF16 ver
@@ -81,7 +83,7 @@ class CosmosPredict2(ModelTemplate):
         (
             "blocks.0.mlp.layer1.weight",
             "blocks.0.adaln_modulation_cross_attn.1.weight",
-        )
+        ),
     ]
     keys_hiprec = ["pos_embedder"]
     keys_ignore = ["_extra_state", "accum_"]
@@ -93,7 +95,7 @@ class ModelHyVid(ModelTemplate):
         (
             "double_blocks.0.img_attn_proj.weight",
             "txt_in.individual_token_refiner.blocks.1.self_attn_qkv.weight",
-        )
+        ),
     ]
 
     def handle_nd_tensor(self, key, data):
@@ -103,7 +105,7 @@ class ModelHyVid(ModelTemplate):
             raise RuntimeError(f"5D tensor fix file already exists! {path}")
         fsd = {key: torch.from_numpy(data)}
         tqdm.write(
-            f"5D key found in state dict! Manual fix required! - {key} {data.shape}"
+            f"5D key found in state dict! Manual fix required! - {key} {data.shape}",
         )
         save_file(fsd, path)
 
@@ -115,7 +117,7 @@ class ModelWan(ModelHyVid):
             "blocks.0.self_attn.norm_q.weight",
             "text_embedding.2.weight",
             "head.modulation",
-        )
+        ),
     ]
     keys_hiprec = [".modulation"]  # nn.parameter, can't load from BF16 ver
 
@@ -127,7 +129,7 @@ class ModelLTXV(ModelTemplate):
             "adaln_single.emb.timestep_embedder.linear_2.weight",
             "transformer_blocks.27.scale_shift_table",
             "caption_projection.linear_2.weight",
-        )
+        ),
     ]
     keys_hiprec = ["scale_shift_table"]  # nn.parameter, can't load from BF16 base quant
 
@@ -213,7 +215,7 @@ def detect_arch(state_dict):
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Generate F16 GGUF files from single UNET"
+        description="Generate F16 GGUF files from single UNET",
     )
     parser.add_argument("--src", required=True, help="Source model ckpt file.")
     parser.add_argument("--dst", help="Output unet gguf file.")
@@ -229,14 +231,14 @@ def strip_prefix(state_dict):
     # prefix for mixed state dict
     prefix = None
     for pfx in ["model.diffusion_model.", "model."]:
-        if any([x.startswith(pfx) for x in state_dict.keys()]):
+        if any(x.startswith(pfx) for x in state_dict):
             prefix = pfx
             break
 
     # prefix for uniform state dict
     if prefix is None:
         for pfx in ["net."]:
-            if all([x.startswith(pfx) for x in state_dict.keys()]):
+            if all(x.startswith(pfx) for x in state_dict):
                 prefix = pfx
                 break
 
@@ -274,10 +276,10 @@ def load_state_dict(path):
 def handle_tensors(writer, state_dict, model_arch):
     name_lengths = tuple(
         sorted(
-            ((key, len(key)) for key in state_dict.keys()),
+            ((key, len(key)) for key in state_dict),
             key=lambda item: item[1],
             reverse=True,
-        )
+        ),
     )
     if not name_lengths:
         return
@@ -289,7 +291,7 @@ def handle_tensors(writer, state_dict, model_arch):
             if namelen > MAX_TENSOR_NAME_LENGTH
         )
         raise ValueError(
-            f"Can only handle tensor names up to {MAX_TENSOR_NAME_LENGTH} characters. Tensors exceeding the limit: {bad_list}"
+            f"Can only handle tensor names up to {MAX_TENSOR_NAME_LENGTH} characters. Tensors exceeding the limit: {bad_list}",
         )
     for key, data in tqdm(state_dict.items()):
         old_dtype = data.dtype
@@ -357,7 +359,7 @@ def handle_tensors(writer, state_dict, model_arch):
             orig_shape = data.shape
             data = data.reshape(n_params // 256, 256)
             writer.add_array(
-                f"comfy.gguf.orig_shape.{key}", tuple(int(dim) for dim in orig_shape)
+                f"comfy.gguf.orig_shape.{key}", tuple(int(dim) for dim in orig_shape),
             )
 
         try:
@@ -371,7 +373,7 @@ def handle_tensors(writer, state_dict, model_arch):
 
         shape_str = f"{{{', '.join(str(n) for n in reversed(data.shape))}}}"
         tqdm.write(
-            f"{f'%-{max_name_len + 4}s' % f'{new_name}'} {old_dtype} --> {data_qtype.name}, shape = {shape_str}"
+            f"{f'%-{max_name_len + 4}s' % f'{new_name}'} {old_dtype} --> {data_qtype.name}, shape = {shape_str}",
         )
 
         writer.add_tensor(new_name, data, raw_dtype=data_qtype)
@@ -425,7 +427,7 @@ def convert_file(path, dst_path=None, interact=True, overwrite=False):
     if os.path.isfile(fix):
         logging.warning(f"\n### Warning! Fix file found at '{fix}'")
         logging.warning(
-            " you most likely need to run 'fix_5d_tensors.py' after quantization."
+            " you most likely need to run 'fix_5d_tensors.py' after quantization.",
         )
 
     return dst_path, model_arch

@@ -4,17 +4,19 @@
 
 import random
 from datetime import datetime
-import torch
-from comfy_api.latest import io  # type: ignore
-import nodes  # type: ignore
-import comfy.samplers  # type: ignore
+from typing import Any
+
 import comfy.sample  # type: ignore
+import comfy.samplers  # type: ignore
 import comfy.utils  # type: ignore
 import latent_preview  # type: ignore
+import nodes  # type: ignore
+import torch
+from comfy_api.latest import io  # type: ignore
+
 from ..core import CATEGORY
 from ..core.common import get_workflow_node
 from ..core.logger import log
-from typing import Any
 
 _LOG_PREFIX = "Sampler (Pipe)"
 
@@ -178,7 +180,7 @@ class RvSampler_KSamplerPipe(io.ComfyNode):
     ):
         if not isinstance(pipe, dict):
             raise ValueError(
-                "Eclipse KSampler (Pipe): The input 'pipe' is invalid or not connected."
+                "Eclipse KSampler (Pipe): The input 'pipe' is invalid or not connected.",
             )
 
         model = pipe.get("model")
@@ -186,11 +188,11 @@ class RvSampler_KSamplerPipe(io.ComfyNode):
 
         if model is None:
             raise ValueError(
-                "Eclipse KSampler (Pipe): The input 'pipe' does not contain a 'model'."
+                "Eclipse KSampler (Pipe): The input 'pipe' does not contain a 'model'.",
             )
         if vae is None:
             raise ValueError(
-                "Eclipse KSampler (Pipe): The input 'pipe' does not contain a 'vae'."
+                "Eclipse KSampler (Pipe): The input 'pipe' does not contain a 'vae'.",
             )
 
         prompt = cls.hidden.prompt
@@ -205,8 +207,7 @@ class RvSampler_KSamplerPipe(io.ComfyNode):
                 pipe_val = pipe[key]
                 if allow_overwrite:
                     return pipe_val
-                else:
-                    return direct_val if direct_val is not None else pipe_val
+                return direct_val if direct_val is not None else pipe_val
             return direct_val
 
         steps = resolve_val("steps", steps)
@@ -242,7 +243,7 @@ class RvSampler_KSamplerPipe(io.ComfyNode):
                     workflow_node = get_workflow_node(extra_pnginfo, unique_id)
                     if workflow_node is not None and "widgets_values" in workflow_node:
                         for index, widget_value in enumerate(
-                            workflow_node["widgets_values"]
+                            workflow_node["widgets_values"],
                         ):
                             if widget_value == original_seed:
                                 workflow_node["widgets_values"][index] = seed
@@ -275,14 +276,14 @@ class RvSampler_KSamplerPipe(io.ComfyNode):
             if tiled_decode:
                 overlap = max(16, tile_size // 8)
                 t = vae.encode_tiled(
-                    pixels, tile_x=tile_size, tile_y=tile_size, overlap=overlap
+                    pixels, tile_x=tile_size, tile_y=tile_size, overlap=overlap,
                 )
             else:
                 t = vae.encode(pixels)
             resolved_latent = {"samples": t}
         elif resolved_latent is None:
             raise ValueError(
-                "Eclipse KSampler (Pipe): You must connect either a 'latent' or an 'image' input, or ensure one is provided in the pipe."
+                "Eclipse KSampler (Pipe): You must connect either a 'latent' or an 'image' input, or ensure one is provided in the pipe.",
             )
 
         # 1. Perform sampling
@@ -290,12 +291,12 @@ class RvSampler_KSamplerPipe(io.ComfyNode):
         latent_samples = comfy.sample.fix_empty_latent_channels(
             model,
             latent_samples,
-            resolved_latent.get("downscale_ratio_spacial", None),
-            resolved_latent.get("downscale_ratio_temporal", None),
+            resolved_latent.get("downscale_ratio_spacial"),
+            resolved_latent.get("downscale_ratio_temporal"),
         )
 
         batch_inds = (
-            resolved_latent["batch_index"] if "batch_index" in resolved_latent else None
+            resolved_latent.get("batch_index")
         )
         noise = comfy.sample.prepare_noise(latent_samples, seed, batch_inds)
 
@@ -377,7 +378,7 @@ class RvSampler_KSamplerPipe(io.ComfyNode):
             decoder = nodes.VAEDecodeTiled()
             overlap = max(16, tile_size // 8)
             images = decoder.decode(
-                vae=vae, samples=latent_output, tile_size=tile_size, overlap=overlap
+                vae=vae, samples=latent_output, tile_size=tile_size, overlap=overlap,
             )[0]
         else:
             latent_val = latent_output["samples"]
@@ -386,7 +387,7 @@ class RvSampler_KSamplerPipe(io.ComfyNode):
             images = vae.decode(latent_val)
             if len(images.shape) == 5:
                 images = images.reshape(
-                    -1, images.shape[-3], images.shape[-2], images.shape[-1]
+                    -1, images.shape[-3], images.shape[-2], images.shape[-1],
                 )
 
         # 3. Handle UI render preview output
@@ -395,7 +396,7 @@ class RvSampler_KSamplerPipe(io.ComfyNode):
         else:
             preview_node = nodes.PreviewImage()
             save_result = preview_node.save_images(
-                images=images, prompt=prompt, extra_pnginfo=extra_pnginfo
+                images=images, prompt=prompt, extra_pnginfo=extra_pnginfo,
             )
             ui_output = save_result.get("ui", {})
 

@@ -84,7 +84,7 @@ class cstr(str):
                 setattr(cstr.color, key, code)
             else:
                 raise ValueError(
-                    f"'cstr' object already contains a code with the name '{name}'."
+                    f"'cstr' object already contains a code with the name '{name}'.",
                 )
 
     def __new__(cls, text: str, suffix: str = ""):
@@ -139,7 +139,7 @@ cstr.color.add_code(
     f"{cstr.color.LIGHTGREEN}Smart Model Loader {cstr.color.LIGHTBEIGE}Debug: {cstr.color.END}",
 )
 cstr.color.add_code(
-    "error", f"{cstr.color.RED}Smart Model Loader {cstr.color.END}Error: {cstr.color.END}"
+    "error", f"{cstr.color.RED}Smart Model Loader {cstr.color.END}Error: {cstr.color.END}",
 )
 
 
@@ -160,7 +160,7 @@ def _get_config_value(key: str, default=None):
     if not config_path.exists():
         return default
     try:
-        with open(config_path, "r", encoding="utf-8") as f:
+        with open(config_path, encoding="utf-8") as f:
             config = json.load(f)
             return config.get(key, default)
     except Exception:

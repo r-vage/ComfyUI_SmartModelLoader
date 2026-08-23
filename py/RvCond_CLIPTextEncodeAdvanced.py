@@ -1,6 +1,9 @@
+from collections.abc import Sequence
+from typing import Any
+
 import torch  # type: ignore
-from typing import Any, List, Optional, Sequence
 from comfy_api.latest import io  # type: ignore
+
 from ..core import CATEGORY
 from ..core.logger import log
 
@@ -12,7 +15,7 @@ PRESET_WEIGHTS: dict = {
 }
 
 
-def parse_weights(text: str) -> List[float]:
+def parse_weights(text: str) -> list[float]:
     if text is None or not text.strip():
         raise ValueError("per_layer_weights is empty.")
     parts = [p.strip() for p in text.replace(";", ",").split(",") if p.strip() != ""]
@@ -32,7 +35,7 @@ def _rms(t: torch.Tensor) -> torch.Tensor:
 def _scale_cond_tensor(
     t: torch.Tensor,
     multiplier: float,
-    per_layer_weights: Optional[Sequence[float]] = None,
+    per_layer_weights: Sequence[float] | None = None,
     renormalize: bool = False,
 ) -> torch.Tensor:
     if per_layer_weights is None or len(per_layer_weights) <= 1:
@@ -65,7 +68,7 @@ def _scale_cond_tensor(
 def scale_conditioning(
     structure: Any,
     multiplier: float,
-    per_layer_weights: Optional[Sequence[float]] = None,
+    per_layer_weights: Sequence[float] | None = None,
     renormalize: bool = False,
 ) -> Any:
     if isinstance(structure, list):
@@ -81,14 +84,14 @@ def scale_conditioning(
                 out.append(
                     [
                         _scale_cond_tensor(
-                            cond_t, multiplier, per_layer_weights, renormalize
+                            cond_t, multiplier, per_layer_weights, renormalize,
                         ),
                         dict(extras),
-                    ]
+                    ],
                 )
             else:
                 out.append(
-                    scale_conditioning(item, multiplier, per_layer_weights, renormalize)
+                    scale_conditioning(item, multiplier, per_layer_weights, renormalize),
                 )
         return out
     if isinstance(structure, torch.Tensor):
@@ -177,7 +180,7 @@ class RvCond_CLIPTextEncodeAdvanced(io.ComfyNode):
     ):
         if clip is None:
             raise RuntimeError(
-                "ERROR: clip input is invalid: None\n\nIf the clip is from a checkpoint loader node your checkpoint does not contain a valid clip or text encoder model."
+                "ERROR: clip input is invalid: None\n\nIf the clip is from a checkpoint loader node your checkpoint does not contain a valid clip or text encoder model.",
             )
 
         # 1. Encode text via ComfyUI CLIP
@@ -187,7 +190,7 @@ class RvCond_CLIPTextEncodeAdvanced(io.ComfyNode):
         # Check if is_krea2
         is_krea2 = False
         try:
-            import comfy.text_encoders.krea2 as krea2  # type: ignore
+            from comfy.text_encoders import krea2  # type: ignore
 
             is_krea2 = isinstance(clip.cond_stage_model, krea2.Krea2TEModel)
         except Exception:
@@ -207,21 +210,21 @@ class RvCond_CLIPTextEncodeAdvanced(io.ComfyNode):
                 )
                 if effective_multiplier != 1.0:
                     conditioning = scale_conditioning(
-                        conditioning, effective_multiplier, None, False
+                        conditioning, effective_multiplier, None, False,
                     )
             else:
                 if rebalance_preset == "custom":
                     weights = parse_weights(per_layer_weights)
                 else:
                     weights = PRESET_WEIGHTS.get(
-                        rebalance_preset, PRESET_WEIGHTS["balanced"]
+                        rebalance_preset, PRESET_WEIGHTS["balanced"],
                     )
                 conditioning = scale_conditioning(
-                    conditioning, effective_multiplier, weights, renormalize
+                    conditioning, effective_multiplier, weights, renormalize,
                 )
         elif effective_multiplier != 1.0:
             conditioning = scale_conditioning(
-                conditioning, effective_multiplier, None, False
+                conditioning, effective_multiplier, None, False,
             )
 
         return io.NodeOutput(conditioning)

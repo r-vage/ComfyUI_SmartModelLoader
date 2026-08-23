@@ -83,12 +83,12 @@ class RvLoader_SmartModelLoader(io.ComfyNode):
     def define_schema(cls):
         weight_dtype_options = ["default", "fp8_e4m3fn", "fp8_e4m3fn_fast", "fp8_e5m2"]
 
-        loras = ["None"] + folder_paths.get_filename_list("loras")
+        loras = ["None", *folder_paths.get_filename_list("loras")]
 
         clip_files = list(folder_paths.get_filename_list("clip"))
         if "text_encoders" in folder_paths.folder_names_and_paths:
             clip_files.extend(folder_paths.get_filename_list("text_encoders"))
-        clips = ["None"] + sorted(set(clip_files))
+        clips = ["None", *sorted(set(clip_files))]
 
         return io.Schema(
             node_id="Smart Model Loader [Eclipse]",
@@ -138,35 +138,31 @@ class RvLoader_SmartModelLoader(io.ComfyNode):
                 ),
                 io.Combo.Input(
                     "ckpt_name",
-                    options=["None"] + folder_paths.get_filename_list("checkpoints"),
+                    options=["None", *folder_paths.get_filename_list("checkpoints")],
                     default="None",
                     tooltip="Select a standard Stable Diffusion or Flux checkpoint file containing diffusion, CLIP, and VAE weights.",
                 ),
                 io.Combo.Input(
                     "unet_name",
-                    options=["None"]
-                    + folder_paths.get_filename_list("diffusion_models"),
+                    options=["None", *folder_paths.get_filename_list("diffusion_models")],
                     default="None",
                     tooltip="Select a standalone UNet/Diffusion model checkpoint (e.g. Flux, SD3, AuraFlow) from the diffusion_models directory.",
                 ),
                 io.Combo.Input(
                     "nunchaku_name",
-                    options=["None"]
-                    + folder_paths.get_filename_list("diffusion_models"),
+                    options=["None", *folder_paths.get_filename_list("diffusion_models")],
                     default="None",
                     tooltip="Select a Nunchaku FP4-quantized model for Flux to load.",
                 ),
                 io.Combo.Input(
                     "qwen_name",
-                    options=["None"]
-                    + folder_paths.get_filename_list("diffusion_models"),
+                    options=["None", *folder_paths.get_filename_list("diffusion_models")],
                     default="None",
                     tooltip="Select a Nunchaku FP4-quantized model for Qwen2-VL to load.",
                 ),
                 io.Combo.Input(
                     "zimage_name",
-                    options=["None"]
-                    + folder_paths.get_filename_list("diffusion_models"),
+                    options=["None", *folder_paths.get_filename_list("diffusion_models")],
                     default="None",
                     tooltip="Select a Nunchaku FP4-quantized model for ZImage to load.",
                 ),
@@ -482,7 +478,7 @@ class RvLoader_SmartModelLoader(io.ComfyNode):
                 ),
                 io.Combo.Input(
                     "vae_name",
-                    options=["None"] + folder_paths.get_filename_list("vae"),
+                    options=["None", *folder_paths.get_filename_list("vae")],
                     default="None",
                     tooltip="Select a standalone VAE file to load from the vae directory.",
                 ),
@@ -642,7 +638,7 @@ class RvLoader_SmartModelLoader(io.ComfyNode):
                 ),
                 io.Combo.Input(
                     "audio_vae_name",
-                    options=["None"] + folder_paths.get_filename_list("vae"),
+                    options=["None", *folder_paths.get_filename_list("vae")],
                     default="None",
                     tooltip="Select a standalone LTXV/LTX2 audio VAE file from the vae directory.",
                 ),

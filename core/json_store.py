@@ -43,7 +43,7 @@ def _lock_path(path: Path) -> Path:
     lock_directory = path.parent / _LOCK_DIRECTORY_NAME
     if lock_directory.is_symlink():
         raise JsonStoreError(
-            f"JSON lock directory may not be a symlink: {lock_directory}"
+            f"JSON lock directory may not be a symlink: {lock_directory}",
         )
     try:
         lock_directory.mkdir(mode=0o700)
@@ -51,18 +51,18 @@ def _lock_path(path: Path) -> Path:
         pass
     except OSError as error:
         raise JsonStoreError(
-            f"Could not create JSON lock directory '{lock_directory}': {error}"
+            f"Could not create JSON lock directory '{lock_directory}': {error}",
         ) from error
     if lock_directory.is_symlink() or not lock_directory.is_dir():
         raise JsonStoreError(
-            f"JSON lock directory must be a real directory: {lock_directory}"
+            f"JSON lock directory must be a real directory: {lock_directory}",
         )
     if os.name != "nt":
         try:
             lock_directory.chmod(0o700)
         except OSError as error:
             raise JsonStoreError(
-                f"Could not secure JSON lock directory '{lock_directory}': {error}"
+                f"Could not secure JSON lock directory '{lock_directory}': {error}",
             ) from error
     return lock_directory / f"{path.name}.lock"
 

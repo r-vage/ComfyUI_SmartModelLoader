@@ -122,7 +122,7 @@ def _marker_is_current(marker: Path, examined: set[str]) -> bool:
         and not isinstance(version, bool)
         and version >= _MIGRATION_MARKER_VERSION
         and data.get("completed") is True
-        and _ECLIPSE_CONFIG_KEYS <= examined
+        and examined >= _ECLIPSE_CONFIG_KEYS
     )
 
 

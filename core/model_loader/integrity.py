@@ -37,6 +37,19 @@ class VerifyResult(TypedDict):
     expected: str | None
 
 
+def resolve_integrity_mode(
+    features: Iterable[str],
+    requested_mode: Any,
+) -> Literal["off", "sidecar", "verify"]:
+    """Ignore serialized verification state when its feature is not active."""
+    if "integrity" not in features:
+        return "off"
+    normalized = str(requested_mode or "off")
+    if normalized in {"off", "sidecar", "verify"}:
+        return normalized
+    return "off"
+
+
 def _normalized_path(path: str | os.PathLike[str]) -> Path:
     candidate = Path(path).expanduser()
     if candidate.is_symlink():
@@ -394,7 +407,7 @@ def verify_primary_model_integrity(
         expected_sha = expected_from_file["sha256"]
     else:
         expected_entry = expected_hashes.get(
-            integrity_key(primary.role, primary.relative_path)
+            integrity_key(primary.role, primary.relative_path),
         )
         if expected_entry is None:
             # Existing templates keyed hashes by basename.
@@ -434,7 +447,7 @@ def verify_primary_model_integrity(
         return
     if result["status"] != "ok":
         raise RuntimeError(
-            f"Integrity verification failed for {primary.path.name}: {result['status']}"
+            f"Integrity verification failed for {primary.path.name}: {result['status']}",
         )
 
 

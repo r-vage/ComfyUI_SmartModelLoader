@@ -1,5 +1,7 @@
-from typing import Optional, Any
+from typing import Any
+
 from comfy_api.latest import io  # type: ignore
+
 from ..core import CATEGORY
 
 DEFAULT_DOWNSCALE = 8
@@ -51,7 +53,7 @@ def _get_v3_type(type_str) -> Any:
 
 def _build_v3_inputs():
     inputs = []
-    for key, (name, type_str, _) in _all_context_input_output_data.items():
+    for (name, type_str, _) in _all_context_input_output_data.values():
         v3_type = _get_v3_type(type_str)
         tooltip = f"Optional input for '{name}'."
         kwargs = {"optional": True, "tooltip": tooltip}
@@ -63,20 +65,20 @@ def _build_v3_inputs():
 
 def _build_v3_outputs():
     outputs = []
-    for key, (_, type_str, ret_name) in _all_context_input_output_data.items():
+    for (_, type_str, ret_name) in _all_context_input_output_data.values():
         v3_type = _get_v3_type(type_str)
         outputs.append(v3_type.Output(ret_name))
     return outputs
 
 
-def new_context(pipe: Optional[dict] = None, **kwargs) -> dict:
+def new_context(pipe: dict | None = None, **kwargs) -> dict:
     # Direct inputs override pipe values; pipe fills in anything not provided.
     context = pipe if pipe is not None else {}
     new_ctx: dict[str, Any] = {}
     for key in _all_context_input_output_data:
         if key == "pipe":
             continue
-        v = kwargs.get(key, None)
+        v = kwargs.get(key)
         if v is not None:
             new_ctx[key] = v
         elif key in context:

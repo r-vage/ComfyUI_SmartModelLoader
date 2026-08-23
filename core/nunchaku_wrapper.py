@@ -11,13 +11,15 @@
 # - Compatible with ComfyUI ModelPatcher interface
 # - LoRA support for both Flux and Qwen models
 
-import os
-import json
-import re
 import copy
-from pathlib import Path
+import json
+import os
+import re
 from collections import defaultdict
-from typing import Optional, Any, TYPE_CHECKING, Dict, List, Tuple, Union, Callable
+from collections.abc import Callable
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
+
 import torch  # type: ignore
 from torch import nn  # type: ignore
 
@@ -30,21 +32,25 @@ log.debug(_LOG_PREFIX, "Module loading started...")
 
 # Import Nunchaku - graceful fallback if pip package not available
 NUNCHAKU_AVAILABLE = False
-NunchakuFluxTransformer2dModel: Optional[Any] = None
-NunchakuQwenImageTransformer2DModel: Optional[Any] = None
-apply_cache_on_transformer: Optional[Any] = None
-ComfyFluxWrapper: Optional[Any] = None
-QwenConfig: Optional[Any] = None
-QwenModelBase: Optional[Any] = None
-NunchakuModelPatcher: Optional[Any] = None
-ZImageModelPatcher: Optional[Any] = None
-ZImageConfig: Optional[Any] = None
-patch_zimage_model: Optional[Any] = None
+NunchakuFluxTransformer2dModel: Any | None = None
+NunchakuQwenImageTransformer2DModel: Any | None = None
+apply_cache_on_transformer: Any | None = None
+ComfyFluxWrapper: Any | None = None
+QwenConfig: Any | None = None
+QwenModelBase: Any | None = None
+NunchakuModelPatcher: Any | None = None
+ZImageModelPatcher: Any | None = None
+ZImageConfig: Any | None = None
+patch_zimage_model: Any | None = None
 
 try:
     # Core nunchaku pip package imports (compiled CUDA kernels)
-    from nunchaku import NunchakuFluxTransformer2dModel as _NunchakuFluxTransformer2dModel  # type: ignore
-    from nunchaku.caching.diffusers_adapters.flux import apply_cache_on_transformer as _apply_cache_on_transformer  # type: ignore
+    from nunchaku import (
+        NunchakuFluxTransformer2dModel as _NunchakuFluxTransformer2dModel,  # type: ignore
+    )
+    from nunchaku.caching.diffusers_adapters.flux import (
+        apply_cache_on_transformer as _apply_cache_on_transformer,  # type: ignore
+    )
 
     NunchakuFluxTransformer2dModel = _NunchakuFluxTransformer2dModel
     apply_cache_on_transformer = _apply_cache_on_transformer
@@ -53,7 +59,9 @@ try:
 
     # Qwen model from pip package
     try:
-        from nunchaku.models.qwenimage import NunchakuQwenImageTransformer2DModel as _NunchakuQwenImageTransformer2DModel  # type: ignore
+        from nunchaku.models.qwenimage import (
+            NunchakuQwenImageTransformer2DModel as _NunchakuQwenImageTransformer2DModel,  # type: ignore
+        )
 
         NunchakuQwenImageTransformer2DModel = _NunchakuQwenImageTransformer2DModel
         log.debug(_LOG_PREFIX, "Qwen model import successful")
@@ -63,14 +71,14 @@ try:
 
     # ComfyUI glue code from vendored extern package (no external custom node dependency)
     try:
-        from ..extern.nunchaku.wrappers.flux import (
-            ComfyFluxWrapper as _ComfyFluxWrapper,
+        from ..extern.nunchaku.model_base.qwenimage import (
+            NunchakuQwenImage as _QwenModelBase,
         )
         from ..extern.nunchaku.model_configs.qwenimage import (
             NunchakuQwenImage as _QwenConfig,
         )
-        from ..extern.nunchaku.model_base.qwenimage import (
-            NunchakuQwenImage as _QwenModelBase,
+        from ..extern.nunchaku.model_configs.zimage import (
+            NunchakuZImage as _ZImageConfig,
         )
         from ..extern.nunchaku.model_patcher.common import (
             NunchakuModelPatcher as _NunchakuModelPatcher,
@@ -78,10 +86,10 @@ try:
         from ..extern.nunchaku.model_patcher.zimage import (
             ZImageModelPatcher as _ZImageModelPatcher,
         )
-        from ..extern.nunchaku.model_configs.zimage import (
-            NunchakuZImage as _ZImageConfig,
-        )
         from ..extern.nunchaku.models.zimage import patch_model as _patch_zimage_model
+        from ..extern.nunchaku.wrappers.flux import (
+            ComfyFluxWrapper as _ComfyFluxWrapper,
+        )
 
         ComfyFluxWrapper = _ComfyFluxWrapper
         QwenConfig = _QwenConfig
@@ -112,16 +120,17 @@ except ImportError as e:
 # ComfyUI imports
 from typing import cast
 
-Flux: Any = cast(Any, None)
-FluxSchnell: Any = cast(Any, None)
-comfy: Any = cast(Any, None)
+Flux: Any = cast("Any", None)
+FluxSchnell: Any = cast("Any", None)
+comfy: Any = cast("Any", None)
 try:
-    import comfy.model_patcher  # type: ignore
-    import comfy.model_management  # type: ignore
-    import comfy.utils  # type: ignore
-    import comfy.model_detection  # type: ignore
-    from comfy.supported_models import Flux as _Flux, FluxSchnell as _FluxSchnell  # type: ignore
     import comfy  # type: ignore
+    import comfy.model_detection  # type: ignore
+    import comfy.model_management  # type: ignore
+    import comfy.model_patcher  # type: ignore
+    import comfy.utils  # type: ignore
+    from comfy.supported_models import Flux as _Flux  # type: ignore
+    from comfy.supported_models import FluxSchnell as _FluxSchnell
 
     Flux = _Flux
     FluxSchnell = _FluxSchnell
@@ -253,11 +262,11 @@ def _patch_zimage_state_dict(state_dict: dict) -> dict:
         if "attention.to_qkv" in key:
             patched_state_dict[key.replace("to_qkv", "qkv")] = value
         elif "attention.to_q" in key:
-            q_weight = state_dict[key]
+            q_weight = value
             k_weight = state_dict[key.replace("to_q", "to_k")]
             v_weight = state_dict[key.replace("to_q", "to_v")]
             patched_state_dict[key.replace("to_q", "qkv")] = torch.cat(
-                [q_weight, k_weight, v_weight], dim=0
+                [q_weight, k_weight, v_weight], dim=0,
             )
         elif "attention.to_k" in key or "attention.to_v" in key:
             continue
@@ -390,7 +399,7 @@ def detect_nunchaku_model_type(model_path: str, model_name: str) -> str:
                             image_model = model_config.get("image_model")
                             if image_model == "lumina2":
                                 return "zimage"
-                            elif image_model == "qwen_image":
+                            if image_model == "qwen_image":
                                 return "qwen"
 
                         # Check for z_image_modulation (ZImage specific)
@@ -405,8 +414,8 @@ def detect_nunchaku_model_type(model_path: str, model_name: str) -> str:
 
 def load_nunchaku_model(
     model_path: str,
-    device: Optional[torch.device] = None,
-    dtype: Optional[torch.dtype] = None,
+    device: torch.device | None = None,
+    dtype: torch.dtype | None = None,
     cpu_offload: bool = False,
     cache_threshold: float = 0.0,
     attention: str = "flash-attention2",
@@ -483,19 +492,19 @@ def load_nunchaku_model(
             "To load Nunchaku quantized models, install the 'nunchaku' pip package:\n"
             "  pip install nunchaku\n\n"
             "Then restart ComfyUI.\n"
-            "Alternatively, use a standard (non-quantized) model."
+            "Alternatively, use a standard (non-quantized) model.",
         )
 
     # Validate model type and check required components
     if model_type not in ["flux", "qwen", "zimage"]:
         raise ValueError(
-            f"Invalid model_type '{model_type}'. Must be 'flux', 'qwen', or 'zimage'"
+            f"Invalid model_type '{model_type}'. Must be 'flux', 'qwen', or 'zimage'",
         )
 
     if model_type == "flux" and ComfyFluxWrapper is None:
         raise RuntimeError(
             "Nunchaku ComfyFluxWrapper not found.\n"
-            "Please ensure the 'nunchaku' pip package is installed."
+            "Please ensure the 'nunchaku' pip package is installed.",
         )
 
     if model_type == "qwen" and (
@@ -503,7 +512,7 @@ def load_nunchaku_model(
     ):
         raise RuntimeError(
             "Nunchaku Qwen support not found.\n"
-            "Please ensure ComfyUI-nunchaku is properly installed with Qwen model support."
+            "Please ensure ComfyUI-nunchaku is properly installed with Qwen model support.",
         )
 
     if model_type == "zimage" and (
@@ -511,7 +520,7 @@ def load_nunchaku_model(
     ):
         raise RuntimeError(
             "Nunchaku ZImage support not found.\n"
-            "Please ensure ComfyUI-nunchaku v1.1.0+ is installed with ZImage support."
+            "Please ensure ComfyUI-nunchaku v1.1.0+ is installed with ZImage support.",
         )
 
     if not os.path.exists(model_path):
@@ -533,7 +542,7 @@ def load_nunchaku_model(
         if torch.cuda.is_available():
             try:
                 gpu_memory_gb = torch.cuda.get_device_properties(
-                    device
+                    device,
                 ).total_memory / (1024**3)
                 cpu_offload = gpu_memory_gb < 14
             except Exception:
@@ -581,8 +590,8 @@ def load_nunchaku_model(
     if model_type == "qwen":
         # Qwen-Image models use state dict loading (no wrapper exists yet)
         # This is a simplified version that uses ComfyUI-nunchaku's model config
-        import safetensors.torch  # type: ignore
         import safetensors  # type: ignore
+        import safetensors.torch  # type: ignore
 
         # Load state dict and metadata
         sd = safetensors.torch.load_file(model_path)
@@ -593,13 +602,16 @@ def load_nunchaku_model(
 
         # Import utility functions from nunchaku package directly
         try:
-            from nunchaku.utils import check_hardware_compatibility, get_precision_from_quantization_config  # type: ignore
+            from nunchaku.utils import (  # type: ignore
+                check_hardware_compatibility,
+                get_precision_from_quantization_config,
+            )
         except ImportError as e:
             raise ImportError(
                 f"Failed to import nunchaku utility functions: {e}\n\n"
                 "Make sure nunchaku package is properly installed:\n"
-                "  pip install nunchaku\n"
-            )
+                "  pip install nunchaku\n",
+            ) from e
 
         # Parse quantization config from metadata
         quantization_config = json.loads(metadata.get("quantization_config", "{}"))
@@ -612,7 +624,7 @@ def load_nunchaku_model(
         # Prepare state dict (handle checkpoint format)
         diffusion_model_prefix = comfy.model_detection.unet_prefix_from_state_dict(sd)
         temp_sd = comfy.utils.state_dict_prefix_replace(
-            sd, {diffusion_model_prefix: ""}, filter_keys=True
+            sd, {diffusion_model_prefix: ""}, filter_keys=True,
         )
         if len(temp_sd) > 0:
             sd = temp_sd
@@ -632,7 +644,7 @@ def load_nunchaku_model(
                 "scale_shift": 0,
                 "rank": rank,
                 "precision": precision,
-            }
+            },
         )
         model_config.optimizations["fp8"] = False
 
@@ -651,7 +663,7 @@ def load_nunchaku_model(
             unet_dtype = dtype
 
         manual_cast_dtype = comfy.model_management.unet_manual_cast(
-            unet_dtype, device, model_config.supported_inference_dtypes
+            unet_dtype, device, model_config.supported_inference_dtypes,
         )
         model_config.set_inference_dtype(unet_dtype, manual_cast_dtype)
 
@@ -685,7 +697,7 @@ def load_nunchaku_model(
         # Set CPU offload if enabled
         if cpu_offload and hasattr(qwen_transformer, "set_offload"):
             qwen_transformer.set_offload(
-                True, num_blocks_on_gpu=num_blocks_on_gpu, use_pin_memory=use_pin_memory
+                True, num_blocks_on_gpu=num_blocks_on_gpu, use_pin_memory=use_pin_memory,
             )
 
         # Replace diffusion_model with wrapper
@@ -694,12 +706,12 @@ def load_nunchaku_model(
         # Type guard for NunchakuModelPatcher
         if NunchakuModelPatcher is None:
             raise ImportError(
-                "NunchakuModelPatcher not available from ComfyUI-nunchaku"
+                "NunchakuModelPatcher not available from ComfyUI-nunchaku",
             )
 
         # Create model patcher (using globally imported NunchakuModelPatcher)
         model_patcher = NunchakuModelPatcher(
-            model, load_device=device, offload_device=offload_device
+            model, load_device=device, offload_device=offload_device,
         )
 
         log.msg(
@@ -713,12 +725,17 @@ def load_nunchaku_model(
 
         return model_patcher
 
-    elif model_type == "zimage":
+    if model_type == "zimage":
         # ZImage models (NextDiT/Lumina2 architecture with SVDQ quantization)
         import safetensors.torch  # type: ignore
-        from nunchaku.utils import get_precision_from_quantization_config  # type: ignore
-        from nunchaku.models.transformers.utils import convert_fp16, patch_scale_key  # type: ignore
-        from nunchaku.utils import is_turing  # type: ignore
+        from nunchaku.models.transformers.utils import (  # type: ignore
+            convert_fp16,
+            patch_scale_key,
+        )
+        from nunchaku.utils import (
+            get_precision_from_quantization_config,  # type: ignore
+            is_turing,  # type: ignore
+        )
 
         # Load state dict and metadata
         sd, metadata = comfy.utils.load_torch_file(model_path, return_metadata=True)
@@ -732,7 +749,7 @@ def load_nunchaku_model(
         # Check for diffusion model prefix
         diffusion_model_prefix = comfy.model_detection.unet_prefix_from_state_dict(sd)
         temp_sd = comfy.utils.state_dict_prefix_replace(
-            sd, {diffusion_model_prefix: ""}, filter_keys=True
+            sd, {diffusion_model_prefix: ""}, filter_keys=True,
         )
         if len(temp_sd) > 0:
             sd = temp_sd
@@ -760,7 +777,7 @@ def load_nunchaku_model(
 
         # Create model config
         model_config = ZImageConfig(
-            rank=rank, precision=precision, skip_refiners=skip_refiners
+            rank=rank, precision=precision, skip_refiners=skip_refiners,
         )
         model_config.set_inference_dtype(unet_dtype, manual_cast_dtype)
 
@@ -784,7 +801,7 @@ def load_nunchaku_model(
 
         # Create ZImage model patcher (supports LoRA for SVDQ quantized layers)
         model_patcher = ZImageModelPatcher(
-            model, load_device=device, offload_device=offload_device
+            model, load_device=device, offload_device=offload_device,
         )
 
         log.msg(
@@ -798,13 +815,13 @@ def load_nunchaku_model(
 
         return model_patcher
 
-    elif model_type == "flux":
+    if model_type == "flux":
         # Type guards for Flux components
         if ComfyFluxWrapper is None:
             raise ImportError(
                 "ComfyFluxWrapper not available.\n"
                 "Make sure ComfyUI-nunchaku extension is properly installed.\n"
-                "The wrappers/flux.py file should exist in ComfyUI-nunchaku."
+                "The wrappers/flux.py file should exist in ComfyUI-nunchaku.",
             )
 
         if NunchakuFluxTransformer2dModel is None:
@@ -824,7 +841,7 @@ def load_nunchaku_model(
             if apply_cache_on_transformer is None:
                 raise ImportError("apply_cache_on_transformer not available")
             transformer = apply_cache_on_transformer(  # type: ignore
-                transformer=transformer, residual_diff_threshold=cache_threshold
+                transformer=transformer, residual_diff_threshold=cache_threshold,
             )
 
         # Set attention implementation
@@ -836,14 +853,14 @@ def load_nunchaku_model(
         # Extract ComfyUI config from metadata
         if metadata is None:
             raise ValueError(
-                "Model metadata not found - this may not be a valid Nunchaku model"
+                "Model metadata not found - this may not be a valid Nunchaku model",
             )
 
         comfy_config_str = metadata.get("comfy_config", None)
         if comfy_config_str is None:
             raise ValueError(
                 "Model is missing 'comfy_config' metadata.\n"
-                "This may be an older Nunchaku model or corrupted file."
+                "This may be an older Nunchaku model or corrupted file.",
             )
 
         comfy_config = json.loads(comfy_config_str)
@@ -985,7 +1002,7 @@ _QWEN_KEY_MAPPING = [
     # Decomposed Add_QKV (Double Block)
     (
         re.compile(
-            r"^(transformer_blocks)[._](\d+)[._]attn[._]add[._](q|k|v)[._]proj$"
+            r"^(transformer_blocks)[._](\d+)[._]attn[._]add[._](q|k|v)[._]proj$",
         ),
         r"\1.\2.attn.add_qkv_proj",
         "add_qkv",
@@ -1057,7 +1074,7 @@ _QWEN_KEY_MAPPING = [
     ),
     (
         re.compile(
-            r"^(transformer_blocks)[._](\d+)[._]ff_context[._]net[._]0(?:[._]proj)?$"
+            r"^(transformer_blocks)[._](\d+)[._]ff_context[._]net[._]0(?:[._]proj)?$",
         ),
         r"\1.\2.mlp_context_fc1",
         "regular",
@@ -1072,7 +1089,7 @@ _QWEN_KEY_MAPPING = [
     # Feed-Forward / MLP Layers (img/txt)
     (
         re.compile(
-            r"^(transformer_blocks)[._](\d+)[._](img_mlp)[._](net)[._](0)[._](proj)$"
+            r"^(transformer_blocks)[._](\d+)[._](img_mlp)[._](net)[._](0)[._](proj)$",
         ),
         r"\1.\2.\3.\4.\5.\6",
         "regular",
@@ -1092,7 +1109,7 @@ _QWEN_KEY_MAPPING = [
     ),
     (
         re.compile(
-            r"^(transformer_blocks)[._](\d+)[._](txt_mlp)[._](net)[._](0)[._](proj)$"
+            r"^(transformer_blocks)[._](\d+)[._](txt_mlp)[._](net)[._](0)[._](proj)$",
         ),
         r"\1.\2.\3.\4.\5.\6",
         "regular",
@@ -1175,7 +1192,7 @@ _QWEN_KEY_MAPPING = [
 ]
 
 _RE_LORA_SUFFIX = re.compile(
-    r"\.(?P<tag>lora(?:[._](?:A|B|down|up)))(?:\.[^.]+)*\.weight$"
+    r"\.(?P<tag>lora(?:[._](?:A|B|down|up)))(?:\.[^.]+)*\.weight$",
 )
 _RE_ALPHA_SUFFIX = re.compile(r"\.(?:alpha|lora_alpha)(?:\.[^.]+)*$")
 
@@ -1202,13 +1219,11 @@ def _rename_layer_underscore_layer_name(old_name: str) -> str:
 
 def _classify_and_map_qwen_key(
     key: str,
-) -> Optional[Tuple[str, str, Optional[str], str]]:
+) -> tuple[str, str, str | None, str] | None:
     # Classify and map a Qwen LoRA key using regex patterns.
     k = key
-    if k.startswith("transformer."):
-        k = k[len("transformer.") :]
-    if k.startswith("diffusion_model."):
-        k = k[len("diffusion_model.") :]
+    k = k.removeprefix("transformer.")
+    k = k.removeprefix("diffusion_model.")
     if k.startswith("lora_unet_"):
         k = k[len("lora_unet_") :]
         k = _rename_layer_underscore_layer_name(k)
@@ -1248,7 +1263,7 @@ def _is_indexable_module(m):
     return isinstance(m, (nn.ModuleList, nn.Sequential, list, tuple))
 
 
-def _get_module_by_name(model: nn.Module, name: str) -> Optional[nn.Module]:
+def _get_module_by_name(model: nn.Module, name: str) -> nn.Module | None:
     # Traverse a path like 'a.b.3.c' to find and return a module.
     if not name:
         return model
@@ -1264,7 +1279,7 @@ def _get_module_by_name(model: nn.Module, name: str) -> Optional[nn.Module]:
                 module = module[int(part)]  # type: ignore
             except (IndexError, TypeError):
                 log.warning(
-                    "Qwen LoRA", f"Failed to index module {name} with part {part}"
+                    "Qwen LoRA", f"Failed to index module {name} with part {part}",
                 )
                 return None
         else:
@@ -1273,8 +1288,8 @@ def _get_module_by_name(model: nn.Module, name: str) -> Optional[nn.Module]:
 
 
 def _resolve_module_name(
-    model: nn.Module, name: str
-) -> Tuple[str, Optional[nn.Module]]:
+    model: nn.Module, name: str,
+) -> tuple[str, nn.Module | None]:
     # Resolve a name string path to a module with fallback paths.
     m = _get_module_by_name(model, name)
     if m is not None:
@@ -1310,8 +1325,8 @@ def _resolve_module_name(
 
 
 def _load_lora_state_dict(
-    lora_state_dict_or_path: Union[str, Path, Dict[str, torch.Tensor]],
-) -> Dict[str, torch.Tensor]:
+    lora_state_dict_or_path: str | Path | dict[str, torch.Tensor],
+) -> dict[str, torch.Tensor]:
     # Load LoRA state dict from path or return existing dict.
     if isinstance(lora_state_dict_or_path, (str, Path)):
         path = Path(lora_state_dict_or_path)
@@ -1321,13 +1336,13 @@ def _load_lora_state_dict(
 
                 state_dict = {}
                 with safe_open(path, framework="pt", device="cpu") as f:
-                    for key in f.keys():
+                    for key in f:
                         state_dict[key] = f.get_tensor(key)
                 return state_dict
             except ImportError:
                 raise ImportError(
-                    "safetensors is required to load .safetensors LoRA files safely"
-                )
+                    "safetensors is required to load .safetensors LoRA files safely",
+                ) from None
         else:
             state_dict = comfy.utils.load_torch_file(str(path), safe_load=True)
             if not isinstance(state_dict, dict):
@@ -1337,8 +1352,8 @@ def _load_lora_state_dict(
 
 
 def _fuse_qkv_lora(
-    qkv_weights: Dict[str, torch.Tensor],
-) -> Tuple[Optional[torch.Tensor], Optional[torch.Tensor], Optional[torch.Tensor]]:
+    qkv_weights: dict[str, torch.Tensor],
+) -> tuple[torch.Tensor | None, torch.Tensor | None, torch.Tensor | None]:
     # Fuse Q/K/V LoRA weights into a single QKV tensor.
     required_keys = ["Q_A", "Q_B", "K_A", "K_B", "V_A", "V_B"]
     if not all(k in qkv_weights for k in required_keys):
@@ -1373,7 +1388,7 @@ def _fuse_qkv_lora(
     r = B_q.shape[1]
     out_q, out_k, out_v = B_q.shape[0], B_k.shape[0], B_v.shape[0]
     B_fused = torch.zeros(
-        out_q + out_k + out_v, 3 * r, dtype=B_q.dtype, device=B_q.device
+        out_q + out_k + out_v, 3 * r, dtype=B_q.dtype, device=B_q.device,
     )
     B_fused[:out_q, :r] = B_q
     B_fused[out_q : out_q + out_k, r : 2 * r] = B_k
@@ -1383,13 +1398,13 @@ def _fuse_qkv_lora(
 
 
 def _handle_proj_out_split(
-    lora_dict: Dict[str, Dict[str, torch.Tensor]], base_key: str, model: nn.Module
-) -> Tuple[
-    Dict[str, Tuple[torch.Tensor, torch.Tensor, Optional[torch.Tensor]]], List[str]
+    lora_dict: dict[str, dict[str, torch.Tensor]], base_key: str, model: nn.Module,
+) -> tuple[
+    dict[str, tuple[torch.Tensor, torch.Tensor, torch.Tensor | None]], list[str],
 ]:
     # Split single-block proj_out LoRA into two branches.
-    result: Dict[str, Tuple[torch.Tensor, torch.Tensor, Optional[torch.Tensor]]] = {}
-    consumed: List[str] = []
+    result: dict[str, tuple[torch.Tensor, torch.Tensor, torch.Tensor | None]] = {}
+    consumed: list[str] = []
     m = re.search(r"single_transformer_blocks\.(\d+)", base_key)
     if not m or base_key not in lora_dict:
         return result, consumed
@@ -1441,11 +1456,13 @@ def _handle_proj_out_split(
 
 
 def _qwen_unpack_lowrank_weight(
-    weight: torch.Tensor, down: bool = True
+    weight: torch.Tensor, down: bool = True,
 ) -> torch.Tensor:
     # Unpack Nunchaku low-rank weight (placeholder - uses nunchaku if available).
     try:
-        from nunchaku.lora.flux.nunchaku_converter import unpack_lowrank_weight  # type: ignore
+        from nunchaku.lora.flux.nunchaku_converter import (
+            unpack_lowrank_weight,  # type: ignore
+        )
 
         return unpack_lowrank_weight(weight, down=down)
     except ImportError:
@@ -1456,7 +1473,9 @@ def _qwen_unpack_lowrank_weight(
 def _qwen_pack_lowrank_weight(weight: torch.Tensor, down: bool = True) -> torch.Tensor:
     # Pack Nunchaku low-rank weight (placeholder - uses nunchaku if available).
     try:
-        from nunchaku.lora.flux.nunchaku_converter import pack_lowrank_weight  # type: ignore
+        from nunchaku.lora.flux.nunchaku_converter import (
+            pack_lowrank_weight,  # type: ignore
+        )
 
         return pack_lowrank_weight(weight, down=down)
     except ImportError:
@@ -1465,11 +1484,13 @@ def _qwen_pack_lowrank_weight(weight: torch.Tensor, down: bool = True) -> torch.
 
 
 def _qwen_reorder_adanorm_lora_up(
-    weight: torch.Tensor, splits: int = 6
+    weight: torch.Tensor, splits: int = 6,
 ) -> torch.Tensor:
     # Reorder AdaNorm LoRA up weights (placeholder - uses nunchaku if available).
     try:
-        from nunchaku.lora.flux.nunchaku_converter import reorder_adanorm_lora_up  # type: ignore
+        from nunchaku.lora.flux.nunchaku_converter import (
+            reorder_adanorm_lora_up,  # type: ignore
+        )
 
         return reorder_adanorm_lora_up(weight, splits=splits)
     except ImportError:
@@ -1478,18 +1499,18 @@ def _qwen_reorder_adanorm_lora_up(
 
 
 def _apply_lora_to_qwen_module(
-    module: Any, A: torch.Tensor, B: torch.Tensor, module_name: str, model: Any
+    module: Any, A: torch.Tensor, B: torch.Tensor, module_name: str, model: Any,
 ) -> None:
     # Append combined LoRA weights to a Qwen module.
     if A.ndim != 2 or B.ndim != 2:
         raise ValueError(f"{module_name}: A/B must be 2D, got {A.shape}, {B.shape}")
     if A.shape[1] != module.in_features:
         raise ValueError(
-            f"{module_name}: A shape {A.shape} mismatch with in_features={module.in_features}"
+            f"{module_name}: A shape {A.shape} mismatch with in_features={module.in_features}",
         )
     if B.shape[0] != module.out_features:
         raise ValueError(
-            f"{module_name}: B shape {B.shape} mismatch with out_features={module.out_features}"
+            f"{module_name}: B shape {B.shape} mismatch with out_features={module.out_features}",
         )
 
     pd, pu = module.proj_down.data, module.proj_up.data
@@ -1514,14 +1535,14 @@ def _apply_lora_to_qwen_module(
     if not hasattr(model, "_lora_slots"):
         model._lora_slots = {}
     slot = model._lora_slots.setdefault(
-        module_name, {"base_rank": base_rank, "appended": 0, "axis_down": axis_down}
+        module_name, {"base_rank": base_rank, "appended": 0, "axis_down": axis_down},
     )
     slot["appended"] += A.shape[0]
 
 
 def compose_qwen_loras_v2(
     model: torch.nn.Module,
-    lora_configs: List[Tuple[Union[str, Path, Dict[str, torch.Tensor]], float]],
+    lora_configs: list[tuple[str | Path | dict[str, torch.Tensor], float]],
 ) -> None:
     # Compose multiple LoRAs into a Qwen model with individual strengths.
     #
@@ -1534,14 +1555,14 @@ def compose_qwen_loras_v2(
     log.msg("Qwen LoRA", f"Composing {len(lora_configs)} LoRAs for Qwen model...")
     reset_qwen_lora_v2(model)
 
-    aggregated_weights: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+    aggregated_weights: dict[str, list[dict[str, Any]]] = defaultdict(list)
 
     # 1. Aggregate weights from all LoRAs
     for lora_path_or_dict, strength in lora_configs:
         lora_name = lora_path_or_dict if isinstance(lora_path_or_dict, str) else "dict"
         lora_state_dict = _load_lora_state_dict(lora_path_or_dict)
 
-        lora_grouped: Dict[str, Dict[str, torch.Tensor]] = defaultdict(dict)
+        lora_grouped: dict[str, dict[str, torch.Tensor]] = defaultdict(dict)
         for key, value in lora_state_dict.items():
             parsed = _classify_and_map_qwen_key(key)
             if parsed is None:
@@ -1568,7 +1589,7 @@ def compose_qwen_loras_v2(
                 )
             elif ".proj_out" in base_key and "single_transformer_blocks" in base_key:
                 split_map, consumed_keys = _handle_proj_out_split(
-                    lora_grouped, base_key, model
+                    lora_grouped, base_key, model,
                 )
                 processed_groups.update(split_map)
                 special_handled.update(consumed_keys)
@@ -1587,7 +1608,7 @@ def compose_qwen_loras_v2(
                     "alpha": alpha,
                     "strength": strength,
                     "source": lora_name,
-                }
+                },
             )
 
     # 2. Apply aggregated weights to the model
@@ -1625,10 +1646,10 @@ def compose_qwen_loras_v2(
                 B = _qwen_reorder_adanorm_lora_up(B, splits=3)
 
             all_A.append(
-                A.to(dtype=module.proj_down.dtype, device=module.proj_down.device)
+                A.to(dtype=module.proj_down.dtype, device=module.proj_down.device),
             )
             all_B_scaled.append(
-                (B * scale).to(dtype=module.proj_up.dtype, device=module.proj_up.device)
+                (B * scale).to(dtype=module.proj_up.dtype, device=module.proj_up.device),
             )
 
         if not all_A:
@@ -1703,8 +1724,8 @@ class ComfyQwenImageWrapper(nn.Module):
         self,
         model: Any,  # NunchakuQwenImageTransformer2DModel
         config: dict,
-        customized_forward: Optional[Callable] = None,
-        forward_kwargs: Optional[dict] = None,
+        customized_forward: Callable | None = None,
+        forward_kwargs: dict | None = None,
         cpu_offload_setting: str = "auto",
         vram_margin_gb: float = 4.0,
     ):
@@ -1712,8 +1733,8 @@ class ComfyQwenImageWrapper(nn.Module):
         self.model = model
         self.dtype = next(model.parameters()).dtype
         self.config = config
-        self.loras: List[Tuple[Union[str, Path, dict], float]] = []
-        self._applied_loras: Optional[List[Tuple[Union[str, Path, dict], float]]] = None
+        self.loras: list[tuple[str | Path | dict, float]] = []
+        self._applied_loras: list[tuple[str | Path | dict, float]] | None = None
 
         self.cpu_offload_setting = cpu_offload_setting
         self.vram_margin_gb = vram_margin_gb
@@ -1777,7 +1798,7 @@ class ComfyQwenImageWrapper(nn.Module):
         if self._applied_loras is None or len(self._applied_loras) != len(self.loras):
             loras_changed = True
         else:
-            for applied, current in zip(self._applied_loras, self.loras):
+            for applied, current in zip(self._applied_loras, self.loras, strict=False):
                 if applied != current:
                     loras_changed = True
                     break
@@ -1838,7 +1859,7 @@ class ComfyQwenImageWrapper(nn.Module):
             # Validate composition
             try:
                 has_slots = hasattr(self.model, "_lora_slots") and bool(
-                    self.model._lora_slots
+                    self.model._lora_slots,
                 )
             except Exception:
                 has_slots = True
@@ -1884,11 +1905,11 @@ class ComfyQwenImageWrapper(nn.Module):
 
         # Execute model
         return self._execute_model(
-            x, timestep, context, guidance, control, transformer_options, **kwargs
+            x, timestep, context, guidance, control, transformer_options, **kwargs,
         )
 
     def _execute_model(
-        self, x, timestep, context, guidance, control, transformer_options, **kwargs
+        self, x, timestep, context, guidance, control, transformer_options, **kwargs,
     ):
         # Helper function to run the Qwen model's forward pass.
         model_device = next(self.model.parameters()).device

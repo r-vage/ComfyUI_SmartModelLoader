@@ -72,9 +72,9 @@ try:
     import comfy.model_patcher as _mp  # type: ignore
 
     _HAS_NATIVE_DYNAMIC_VRAM = hasattr(
-        _mp, "ModelPatcherDynamic"
+        _mp, "ModelPatcherDynamic",
     ) or hasattr(  # 0.23.0+
-        _mp.ModelPatcher, "model_mmap_residency"
+        _mp.ModelPatcher, "model_mmap_residency",
     )  # 0.18.x
 except Exception:  # noqa: BLE001 - optional ComfyUI compatibility probe
     _HAS_NATIVE_DYNAMIC_VRAM = False
@@ -89,7 +89,7 @@ def is_safe_filename(filename: str) -> bool:
     # Block path traversal attempts
     if ".." in filename or "/" in filename or "\\" in filename:
         log.warning(
-            "Security", f"Blocked path traversal attempt in filename: {filename}"
+            "Security", f"Blocked path traversal attempt in filename: {filename}",
         )
         return False
     # Block null bytes
@@ -207,7 +207,7 @@ class LoaderEndpoints:
 
             # Security: double-check path stays within template directory
             if not os.path.abspath(template_path).startswith(
-                os.path.abspath(template_dir)
+                os.path.abspath(template_dir),
             ):
                 return web.Response(status=403, text="Access denied")
 
@@ -217,7 +217,7 @@ class LoaderEndpoints:
                     from .loader_templates import load_template
 
                     config = await asyncio.to_thread(
-                        load_template, Path(filename).stem
+                        load_template, Path(filename).stem,
                     )
                     if not config:
                         return web.Response(status=500, text="Template is malformed")
@@ -257,14 +257,14 @@ class LoaderEndpoints:
                     )
                 if not is_safe_filename(f"{name}.json"):
                     return web.json_response(
-                        {"success": False, "error": "Invalid template name"}, status=400
+                        {"success": False, "error": "Invalid template name"}, status=400,
                     )
 
                 # Snapshot trusted .eclipse.json expected values into the template (plan §4.3).
                 try:
                     if isinstance(config, dict):
                         config = await asyncio.to_thread(
-                            _overlay_expected_hashes_from_disk, config
+                            _overlay_expected_hashes_from_disk, config,
                         )
                     else:
                         return web.json_response(
@@ -279,25 +279,24 @@ class LoaderEndpoints:
                 success = await asyncio.to_thread(save_template, name, config)
                 if success:
                     log.msg(
-                        "Smart Loader", f"\u2713 Template '{name}' saved successfully"
+                        "Smart Loader", f"\u2713 Template '{name}' saved successfully",
                     )
                     return web.json_response({"success": True})
-                else:
-                    log.error(
-                        "Smart Loader", f"\u2717 Failed to save template '{name}'"
-                    )
-                    return web.json_response(
-                        {"success": False, "error": "Failed to save template"},
-                        status=500,
-                    )
+                log.error(
+                    "Smart Loader", f"\u2717 Failed to save template '{name}'",
+                )
+                return web.json_response(
+                    {"success": False, "error": "Failed to save template"},
+                    status=500,
+                )
             except web.HTTPException:
                 raise
             except Exception as e:  # noqa: BLE001 - endpoint boundary sanitizes failures
                 log.error(
-                    "Smart Loader", f"Template save failed: {type(e).__name__}"
+                    "Smart Loader", f"Template save failed: {type(e).__name__}",
                 )
                 return web.json_response(
-                    {"success": False, "error": "Template save failed"}, status=500
+                    {"success": False, "error": "Template save failed"}, status=500,
                 )
 
         @PromptServer.instance.routes.post("/smart-model-loader/templates/delete")
@@ -320,22 +319,22 @@ class LoaderEndpoints:
                     delete_models=bounded_data.get("delete_models") is True,
                 )
                 return web.json_response(
-                    {"success": True, "deleted_models": deleted_models}
+                    {"success": True, "deleted_models": deleted_models},
                 )
             except BlockingIOError:
                 return web.json_response(
-                    {"success": False, "error": "Prompt queue is active"}, status=409
+                    {"success": False, "error": "Prompt queue is active"}, status=409,
                 )
             except FileNotFoundError:
                 return web.json_response(
-                    {"success": False, "error": "Template not found"}, status=404
+                    {"success": False, "error": "Template not found"}, status=404,
                 )
             except web.HTTPException:
                 raise
             except (OSError, ValueError) as error:
                 log.error("Smart Loader", f"Template deletion failed: {type(error).__name__}")
                 return web.json_response(
-                    {"success": False, "error": "Template deletion failed"}, status=500
+                    {"success": False, "error": "Template deletion failed"}, status=500,
                 )
 
         # ==================== CIVITAI DOWNLOAD (locator-first: AIR/SHA) ====================
@@ -357,7 +356,7 @@ class LoaderEndpoints:
                 str(data.get("requested_filename") or "").strip() or None
             )
             download_preference = str(
-                data.get("download_preference") or "default"
+                data.get("download_preference") or "default",
             ).strip()
             try:
                 overwrite = require_json_boolean(data, "overwrite")
@@ -371,7 +370,7 @@ class LoaderEndpoints:
             if supplied_download_id is None:
                 download_id = uuid.uuid4().hex
             elif isinstance(supplied_download_id, str) and re.fullmatch(
-                r"[A-Za-z0-9][A-Za-z0-9_-]{19,127}", supplied_download_id
+                r"[A-Za-z0-9][A-Za-z0-9_-]{19,127}", supplied_download_id,
             ):
                 download_id = supplied_download_id
             else:
@@ -679,7 +678,7 @@ class LoaderEndpoints:
                             "sha256": resolved.get("sha256"),
                             "precision": resolved.get("precision"),
                             "download_id": download_id,
-                        }
+                        },
                     )
                 if conflict_policy == "rename":
                     stem = destination.stem
@@ -852,7 +851,7 @@ class LoaderEndpoints:
                         "model_version_id": resolved.get("model_version_id"),
                         "file_id": resolved.get("file_id"),
                         "download_id": download_id,
-                    }
+                    },
                 )
             finally:
                 release_download_id(download_id)
@@ -865,7 +864,7 @@ class LoaderEndpoints:
             data = await read_json_object_request(request)
             download_id = data.get("download_id")
             if not isinstance(download_id, str) or re.fullmatch(
-                r"[A-Za-z0-9][A-Za-z0-9_-]{19,127}", download_id
+                r"[A-Za-z0-9][A-Za-z0-9_-]{19,127}", download_id,
             ) is None:
                 return web.json_response(
                     {"success": False, "error": "Invalid download identity"},
@@ -878,7 +877,7 @@ class LoaderEndpoints:
                         "success": True,
                         "status": "cancelling",
                         "download_id": download_id,
-                    }
+                    },
                 )
             if result == "not-transferring":
                 return web.json_response(
@@ -914,13 +913,13 @@ class LoaderEndpoints:
                     promote_verified_replacement,
                     role=str(bounded_data.get("target_role") or "").strip(),
                     original_filename=str(
-                        bounded_data.get("original_filename") or ""
+                        bounded_data.get("original_filename") or "",
                     ).strip(),
                     replacement_filename=str(
-                        bounded_data.get("replacement_filename") or ""
+                        bounded_data.get("replacement_filename") or "",
                     ).strip(),
                     expected_sha256=str(
-                        bounded_data.get("expected_sha256") or ""
+                        bounded_data.get("expected_sha256") or "",
                     ).strip(),
                     cleanup_filenames=bounded_data.get("cleanup_filenames")
                     if isinstance(bounded_data.get("cleanup_filenames"), list)
@@ -929,11 +928,11 @@ class LoaderEndpoints:
                 return web.json_response({"success": True, "deleted": deleted})
             except BlockingIOError:
                 return web.json_response(
-                    {"success": False, "error": "Prompt queue is active"}, status=409
+                    {"success": False, "error": "Prompt queue is active"}, status=409,
                 )
             except FileNotFoundError:
                 return web.json_response(
-                    {"success": False, "error": "Replacement file not found"}, status=404
+                    {"success": False, "error": "Replacement file not found"}, status=404,
                 )
             except ValueError:
                 return web.json_response(
@@ -945,7 +944,7 @@ class LoaderEndpoints:
             except OSError as error:
                 log.error("Promote", f"Promotion failed: {type(error).__name__}")
                 return web.json_response(
-                    {"success": False, "error": "Promotion failed"}, status=500
+                    {"success": False, "error": "Promotion failed"}, status=500,
                 )
 
         # ==================== INTEGRITY VERIFY (present files) ====================
@@ -963,26 +962,26 @@ class LoaderEndpoints:
                 raise
             except Exception:  # noqa: BLE001 - endpoint boundary sanitizes failures
                 return web.json_response(
-                    {"success": False, "error": "Invalid JSON body"}, status=400
+                    {"success": False, "error": "Invalid JSON body"}, status=400,
                 )
 
             bounded_role = str(bounded_data.get("target_role") or "").strip()
             bounded_filename = str(bounded_data.get("filename") or "").strip()
             bounded_expected = str(bounded_data.get("air_or_hash") or "").strip()
             bounded_preference = str(
-                bounded_data.get("download_preference") or "default"
+                bounded_data.get("download_preference") or "default",
             ).strip()
             try:
                 _root, bounded_path, bounded_relative = await asyncio.to_thread(
-                    resolve_role_target, bounded_role, bounded_filename
+                    resolve_role_target, bounded_role, bounded_filename,
                 )
             except FileNotFoundError:
                 return web.json_response(
-                    {"success": False, "error": "File not found"}, status=404
+                    {"success": False, "error": "File not found"}, status=404,
                 )
             except ValueError:
                 return web.json_response(
-                    {"success": False, "error": "Invalid model target"}, status=400
+                    {"success": False, "error": "Invalid model target"}, status=400,
                 )
 
             bounded_sha = None
@@ -1029,6 +1028,10 @@ class LoaderEndpoints:
                     {
                         "success": False,
                         "status": bounded_result.get("status"),
+                        "actual": bounded_result.get("actual"),
+                        "expected": bounded_sha,
+                        "expected_precision": bounded_preference,
+                        "filename": Path(bounded_filename).name,
                         "error": "Integrity verification failed",
                     },
                     status=422,
@@ -1056,7 +1059,7 @@ class LoaderEndpoints:
                     "expected": bounded_sha,
                     "expected_precision": bounded_preference,
                     "filename": Path(bounded_filename).name,
-                }
+                },
             )
 
         # ==================== MODEL FILE LISTS ====================
@@ -1104,7 +1107,7 @@ class StandaloneConfigEndpoints:
             hf_configured, hf_source = get_auth_token_status("huggingface")
             try:
                 chip_color = normalize_chip_color(
-                    get_config_value("chip_color", DEFAULT_CHIP_COLOR)
+                    get_config_value("chip_color", DEFAULT_CHIP_COLOR),
                 )
             except ValueError:
                 chip_color = DEFAULT_CHIP_COLOR
@@ -1113,19 +1116,19 @@ class StandaloneConfigEndpoints:
                     "log_level": get_config_value("log_level", "warning"),
                     "use_sliders": get_config_value("use_sliders", True),
                     "allow_legacy_model_formats": get_config_value(
-                        "allow_legacy_model_formats", False
+                        "allow_legacy_model_formats", False,
                     ),
                     "retry_download_attempts": get_config_value(
-                        "retry_download_attempts", 2
+                        "retry_download_attempts", 2,
                     ),
                     "chip_color": chip_color,
                     "civitai_api_key_configured": bool(
-                        get_config_value("civitai_api_key", "")
+                        get_config_value("civitai_api_key", ""),
                     ),
                     "hf_token_configured": hf_configured,
                     "hf_token_source": hf_source,
                     "has_native_dynamic_vram": _HAS_NATIVE_DYNAMIC_VRAM,
-                }
+                },
             )
 
         @PromptServer.instance.routes.post("/smart-model-loader/config/update")
@@ -1153,7 +1156,7 @@ class StandaloneConfigEndpoints:
                 if key == "log_level":
                     if value not in {"error", "warning", "info", "debug"}:
                         return web.json_response(
-                            {"success": False, "error": "Invalid log level"}, status=400
+                            {"success": False, "error": "Invalid log level"}, status=400,
                         )
                 elif key in {"use_sliders", "allow_legacy_model_formats"}:
                     if not isinstance(value, bool):
@@ -1176,7 +1179,7 @@ class StandaloneConfigEndpoints:
                         value = normalize_chip_color(value)
                     except ValueError as error:
                         return web.json_response(
-                            {"success": False, "error": str(error)}, status=400
+                            {"success": False, "error": str(error)}, status=400,
                         )
                 elif not isinstance(value, str) or len(value) > 8192:
                     return web.json_response(
@@ -1197,7 +1200,7 @@ class StandaloneConfigEndpoints:
                         key: bool(value) if key in {"civitai_api_key", "hf_token"} else value
                         for key, value in updates.items()
                     },
-                }
+                },
             )
 
 

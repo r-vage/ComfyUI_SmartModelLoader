@@ -1,5 +1,4 @@
-"""
-This module provides a mixin class for Nunchaku models. It is intended to be inherited by nunchaku models.
+"""This module provides a mixin class for Nunchaku models. It is intended to be inherited by nunchaku models.
 """
 
 import logging
@@ -10,15 +9,13 @@ logger = logging.getLogger(__name__)
 
 
 class NunchakuModelMixin:
-    """
-    Mixin class for Nunchaku models.
+    """Mixin class for Nunchaku models.
     """
 
     offload: bool = False
 
     def set_offload(self, offload: bool, **kwargs):
-        """
-        Enable or disable CPU offloading for the model.
+        """Enable or disable CPU offloading for the model.
 
         Parameters
         ----------
@@ -31,14 +28,14 @@ class NunchakuModelMixin:
         ------
         NotImplementedError
             If not implemented in the subclass.
+
         """
         raise NotImplementedError(
-            "CPU offload needs to be implemented in the child class"
+            "CPU offload needs to be implemented in the child class",
         )
 
     def to_safely(self, *args, **kwargs):
-        """
-        Safely move the model to a device or change its dtype.
+        """Safely move the model to a device or change its dtype.
 
         This method overrides the default ``.to()`` behavior to:
 
@@ -66,6 +63,7 @@ class NunchakuModelMixin:
         -----
         UserWarning
             If attempting to move the model to GPU while offload is enabled.
+
         """
         device_arg_or_kwarg_present = (
             any(isinstance(arg, torch.device) for arg in args) or "device" in kwargs
@@ -91,10 +89,9 @@ class NunchakuModelMixin:
         if dtype_present_in_args:
             raise ValueError(
                 "Casting a quantized model to a new `dtype` is unsupported. To set the dtype of unquantized layers, please "
-                "use the `torch_dtype` argument when loading the model using `from_pretrained` or `from_single_file`"
+                "use the `torch_dtype` argument when loading the model using `from_pretrained` or `from_single_file`",
             )
-        if self.offload:
-            if device_arg_or_kwarg_present:
-                logger.debug("Skipping moving the model as CPU offload is enabled")
-                return self
+        if self.offload and device_arg_or_kwarg_present:
+            logger.debug("Skipping moving the model as CPU offload is enabled")
+            return self
         return self.to(*args, **kwargs)
