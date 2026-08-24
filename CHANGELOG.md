@@ -1,6 +1,29 @@
 # Changelog
 
-## 2026-08-23
+## 2026-08-24
+
+### Version: 1.0.5
+
+- **Feat**
+  - Add a 0.0–1.0 `denoise` control below `cfg` in the Smart Model Loader sampler chip, persist it in templates, include it in the emitted PIPE, and append it to IO Checkpoint Loader inputs and outputs.
+  - Automatically detect and migrate previous compact and seed-button positional Smart Model Loader layouts before node configuration, preserving `flux_guidance` and every later widget value when older workflows load.
+
+- **Fix**
+  - Let ComfyUI report one field-specific prompt-validation error for a missing Smart Model Loader primary model instead of repeating one node-wide error for every widget.
+  - Preserve the Pipe sampler's manually resized height when tiled-decode controls change while previews are enabled so the preview absorbs row changes, while retaining automatic resizing when preview is `None`.
+
+**Changed files:**
+- `Readme/Smart_Loaders.md`
+- `core/model_loader/pipes.py`
+- `core/model_loader/smart.py`
+- `js/eclipse-sampler-tiled-decode.js`
+- `js/eclipse-smart-model-loader.js`
+- `js/smart-model-loader-widget-migration.js` (new)
+- `py/RvLoader_SmartModelLoader.py`
+- `py/RvPipe_IO_CheckpointLoader.py`
+- `pyproject.toml`
+- `tests/test_pipeline_nodes.py`
+- `tools/pipeline-frontend-harness.mjs`
 
 ### Version: 1.0.4
 

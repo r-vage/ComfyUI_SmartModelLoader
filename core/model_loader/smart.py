@@ -151,6 +151,7 @@ def execute_smart_request(**kwargs):
     scheduler = kwargs.get("scheduler", "normal")
     steps = kwargs.get("steps", 20)
     cfg = round(kwargs.get("cfg", 8.0), 2)
+    denoise = round(kwargs.get("denoise", 1.0), 2)
     flux_guidance = round(kwargs.get("flux_guidance", 3.5), 2)
 
     seed = int(kwargs.get("seed", 0))
@@ -727,6 +728,7 @@ def execute_smart_request(**kwargs):
         scheduler=scheduler,
         steps=steps,
         cfg=cfg,
+        denoise=denoise,
         flux_guidance=flux_guidance,
     )
 

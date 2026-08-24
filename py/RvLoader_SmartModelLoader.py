@@ -9,7 +9,7 @@ from __future__ import annotations
 # - CLIP: External or baked CLIP support with up to 4 models
 # - VAE: External or baked VAE support
 # - Latent: Resolution presets/custom + batch size → latent tensor creation
-# - Sampler: Sampler/scheduler/steps/cfg/flux_guidance output in pipe
+# - Sampler: Sampler/scheduler/steps/cfg/denoise/flux_guidance output in pipe
 # - LoRA: Up to 3 model-only LoRA slots with switches
 # - Model Sampling: Advanced sampling method configuration
 # - Block Swap: Offload transformer blocks to CPU for VRAM savings
@@ -24,12 +24,10 @@ from comfy_api.latest import io  # type: ignore
 from ..core import CATEGORY, RESOLUTION_PRESETS, SLIDER_DISPLAY
 from ..core.loader_templates import get_template_list, get_template_mtime
 from ..core.logger import log
-from ..core.model_loader.loading import LoadRequest
 from ..core.model_loader.smart import execute_smart_request
 from ..core.model_loader.validation import (
     DOWNLOAD_TARGET_ROLES,
     MODEL_PRECISION_OPTIONS,
-    LoaderValidationError,
 )
 from ..core.model_loader_common import GGUF_AVAILABLE
 from ..core.nunchaku_wrapper import get_nunchaku_info
@@ -614,6 +612,16 @@ class RvLoader_SmartModelLoader(io.ComfyNode):
                     tooltip="Classifier-Free Guidance (CFG) scale. Controls prompt adherence. Higher values enforce the prompt strictly but can burn colors; 1.0 disables it.",
                 ),
                 io.Float.Input(
+                    "denoise",
+                    default=1.0,
+                    min=0.0,
+                    max=1.0,
+                    step=0.01,
+                    round=0.01,
+                    display_mode=SLIDER_DISPLAY,
+                    tooltip="Denoising strength. 1.0 fully denoises the input latent; lower values preserve more of the starting image or latent.",
+                ),
+                io.Float.Input(
                     "flux_guidance",
                     default=3.5,
                     min=0.0,
@@ -692,14 +700,6 @@ class RvLoader_SmartModelLoader(io.ComfyNode):
                 io.Custom("PIPE").Output("pipe"),
             ],
         )
-
-    @classmethod
-    def validate_inputs(cls, **kwargs):
-        try:
-            LoadRequest.from_kwargs(kwargs, smart=True)
-        except (LoaderValidationError, TypeError) as error:
-            return str(error)
-        return True
 
     @classmethod
     def fingerprint_inputs(cls, **kwargs):

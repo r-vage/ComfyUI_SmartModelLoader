@@ -29,6 +29,7 @@ _all_context_input_output_data = {
     "vae_name": ("vae_name", "STRING", "vae_name"),
     "lora_names": ("lora_names", "STRING", "lora_names"),
     "seed": ("seed", "INT", "seed"),
+    "denoise": ("denoise", "FLOAT", "denoise"),
 }
 
 _force_input_types = {"INT", "STRING", "FLOAT", "BOOLEAN"}

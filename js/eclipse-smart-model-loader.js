@@ -33,6 +33,7 @@ import {
     classifyIntegrityVerifyResult,
     resolveIntegrityUiState,
 } from './smart-model-loader-integrity-flow.js';
+import { migrateLegacySmartLoaderWidgetValues } from './smart-model-loader-widget-migration.js';
 const NODE_NAME = 'Smart Model Loader [Eclipse]';
 const SPECIAL_SEEDS = [-1, -2, -3];
 const FEATURE_OPTIONS = [
@@ -41,7 +42,7 @@ const FEATURE_OPTIONS = [
     { label: 'vae', tooltip: 'Toggle visibility of VAE wrapper settings (Baked checkpoint vs External VAE files)' },
     { label: 'audio_vae', tooltip: 'Toggle visibility of audio decoder/VAE parameters (useful for LTXV/LTX2 video generation)' },
     { label: 'latent', tooltip: 'Toggle visibility of empty latent resolution presets, custom sizing, and batch size controls' },
-    { label: 'sampler', tooltip: 'Toggle visibility of ComfyUI KSampler algorithms, schedulers, steps, CFG, and Flux guidance scales' },
+    { label: 'sampler', tooltip: 'Toggle visibility of ComfyUI KSampler algorithms, schedulers, steps, CFG, denoise, and Flux guidance scales' },
     { label: 'lora', tooltip: 'Toggle visibility of LoRA slots (enable switches, files, and weights)' },
     { label: 'model_sampling', tooltip: 'Toggle visibility of model-level scheduling curves (Universal shifts, Flux base shifts, target dimensions)' },
     { label: 'block_swap', tooltip: 'Toggle visibility of block-swapping memory managers (offload transformer layers to CPU RAM to save VRAM)' },
@@ -57,7 +58,7 @@ const FEATURE_WIDGETS = {
     vae: ['vae_source', 'vae_name'],
     audio_vae: ['audio_vae_source', 'audio_vae_name'],
     latent: ['resolution', 'width', 'height', 'batch_size'],
-    sampler: ['sampler_name', 'scheduler', 'steps', 'cfg', 'flux_guidance'],
+    sampler: ['sampler_name', 'scheduler', 'steps', 'cfg', 'denoise', 'flux_guidance'],
     lora: ['lora_count', 'lora_switch_1', 'lora_name_1', 'lora_weight_1', 'lora_switch_2', 'lora_name_2', 'lora_weight_2', 'lora_switch_3', 'lora_name_3', 'lora_weight_3'],
     model_sampling: ['sampling_method', 'sampling_subtype', 'shift', 'base_shift', 'sampling_width', 'sampling_height', 'original_timesteps', 'zsnr', 'sigma_max', 'sigma_min'],
     block_swap: ['blocks_to_swap', 'offload_embeddings'],
@@ -115,6 +116,16 @@ app.registerExtension({
     name: 'SmartModelLoader.SmartModelLoader',
     async beforeRegisterNodeDef(nodeType, nodeData, _app) {
         if (nodeData.name !== NODE_NAME) return;
+        const origConfigure = nodeType.prototype.configure;
+        if (origConfigure) {
+            nodeType.prototype.configure = function (data) {
+                const args = [...arguments];
+                const migratedData = migrateLegacySmartLoaderWidgetValues(data);
+                if (migratedData !== data) this._smartModelLoaderDenoiseMigrated = true;
+                args[0] = migratedData;
+                return origConfigure.apply(this, args);
+            };
+        }
         const origOnNodeCreated = nodeType.prototype.onNodeCreated;
         nodeType.prototype.onNodeCreated = function () {
             const ret = origOnNodeCreated ? origOnNodeCreated.apply(this, arguments) : void 0;
@@ -1064,6 +1075,7 @@ app.registerExtension({
                 sv('scheduler', 'normal');
                 sv('steps', 20);
                 sv('cfg', 8);
+                sv('denoise', 1);
                 sv('flux_guidance', 3.5);
                 sv('expected_hashes', '{}');
                 sv('air_or_hash', '');
@@ -1164,6 +1176,7 @@ app.registerExtension({
                     if (data.scheduler !== undefined) sv('scheduler', data.scheduler);
                     if (data.steps !== undefined) sv('steps', data.steps);
                     if (data.cfg !== undefined) sv('cfg', data.cfg);
+                    if (data.denoise !== undefined) sv('denoise', data.denoise);
                     if (data.flux_guidance !== undefined) sv('flux_guidance', data.flux_guidance);
                 } finally {
                     isLoadingTemplate = false;
@@ -1374,6 +1387,7 @@ app.registerExtension({
                     cfg.scheduler = gv('scheduler');
                     cfg.steps = gv('steps');
                     cfg.cfg = gv('cfg');
+                    cfg.denoise = gv('denoise');
                     const ct = gv('clip_type');
                     if (mt === 'Nunchaku Flux' || (['flux', 'flux2'].includes(ct) && ['UNet Model', 'GGUF Model'].includes(mt))) {
                         cfg.flux_guidance = gv('flux_guidance');
@@ -1685,6 +1699,7 @@ app.registerExtension({
                 d('scheduler', hasSampler);
                 d('steps', hasSampler);
                 d('cfg', hasSampler);
+                d('denoise', hasSampler);
                 d('flux_guidance', hasSampler && isFluxLike);
                 const hasLora = feats.has('lora');
                 const loraCount = parseInt(gv('lora_count')) || 3;

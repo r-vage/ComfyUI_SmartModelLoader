@@ -27,6 +27,7 @@ def build_smart_sampler_fields(
     scheduler: str,
     steps: int,
     cfg: float,
+    denoise: float,
     flux_guidance: float,
 ) -> dict:
     supports_flux_guidance = model_type == "Nunchaku Flux" or (
@@ -39,6 +40,7 @@ def build_smart_sampler_fields(
         scheduler=scheduler if enabled else OMIT,
         steps=steps if enabled else OMIT,
         cfg=cfg if enabled else OMIT,
+        denoise=denoise if enabled else OMIT,
         flux_guidance=(flux_guidance if enabled and supports_flux_guidance else OMIT),
         _allow_overwrite=False if enabled else OMIT,
     )

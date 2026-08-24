@@ -385,12 +385,13 @@ app.registerExtension({
 
             const tiledDecodeWidget = this.widgets.find(w => w.name === 'tiled_decode');
             const tileSizeWidget = this.widgets.find(w => w.name === 'tile_size');
+            const previewModeWidget = this.widgets.find(w => w.name === 'preview_mode');
 
             if (tiledDecodeWidget && tileSizeWidget) {
                 const visibility = createWidgetVisibilityManager(node);
                 const updateVisibility = () => {
                     visibility.setVisible('tile_size', !!tiledDecodeWidget.value);
-                    smartResize(node);
+                    if (previewModeWidget?.value === 'None') smartResize(node);
                 };
 
                 const origCallback = tiledDecodeWidget.callback;
@@ -412,7 +413,6 @@ app.registerExtension({
                 updateVisibility();
             }
 
-            const previewModeWidget = this.widgets.find(w => w.name === 'preview_mode');
             if (previewModeWidget) {
                 const updatePreviewVisibility = (val) => {
                     if (val === "None") {

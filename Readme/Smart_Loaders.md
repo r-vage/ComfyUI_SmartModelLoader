@@ -79,7 +79,7 @@ The node uses a combo-chip widget at the top to control which configuration sect
 | `vae` | **on** | VAE source selection |
 | `audio_vae` | off | Video/audio dual VAE loading (e.g. LTXV/LTX2) |
 | `latent` | off | Resolution presets, custom dimensions, batch size |
-| `sampler` | off | Sampler, scheduler, steps, CFG, and Flux guidance when applicable |
+| `sampler` | off | Sampler, scheduler, steps, CFG, denoise, and Flux guidance when applicable |
 | `lora` | off | Up to 3 LoRA slots |
 | `model_sampling` | off | Sampling method and architecture-specific parameters |
 | `block_swap` | off | GPU↔CPU block offloading |
@@ -270,8 +270,11 @@ Enable the **sampler** chip to configure sampling within the loader.
 | `scheduler` | All ComfyUI schedulers | normal |
 | `steps` | 1–150 | 20 |
 | `cfg` | 1.0–30.0 | 8.0 |
+| `denoise` | 0.0–1.0 | 1.0 |
 | `flux_guidance` | 0.0–10.0 | 3.5 |
 | `batch_size` | 1–4096 | 1 |
+
+When loading a workflow saved before the `denoise` widget was added, the frontend detects the legacy positional layout and inserts the new default before restoring the node. This preserves `flux_guidance` and every later widget value.
 
 When disabled, use a separate KSampler node or Smart Sampler Settings v2.
 
@@ -419,7 +422,7 @@ Single **PIPE** output containing all loaded components:
 | `width`, `height` | INT | If latent chip enabled |
 | `batch_size` | INT | If latent chip enabled |
 | `sampler_name`, `scheduler` | STRING | If sampler chip enabled |
-| `steps`, `cfg` | INT/FLOAT | If sampler chip enabled |
+| `steps`, `cfg`, `denoise` | INT/FLOAT | If sampler chip enabled |
 | `flux_guidance` | FLOAT | If sampler chip enabled and the selected model/CLIP combination exposes Flux guidance |
 | `seed` | INT | If seed chip enabled |
 | `model_name`, `vae_name` | STRING | Always |
@@ -462,7 +465,7 @@ The Smart Model Loader outputs a single PIPE — use these dedicated nodes to ex
 
 1. Click **latent** and **sampler** chips to enable them
 2. Select resolution preset or enter custom dimensions
-3. Configure sampler, scheduler, steps, CFG
+3. Configure sampler, scheduler, steps, CFG, and denoise strength
 4. Set `flux_guidance` if using Flux models
 5. Pipe now includes latent tensor and sampler settings
 
