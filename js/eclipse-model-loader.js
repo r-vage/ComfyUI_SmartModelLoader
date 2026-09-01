@@ -160,9 +160,9 @@ for (const [nodeName, cfg] of Object.entries(NODE_CONFIGS)) {
                     d('cache_threshold', isNunchakuFlux);
                     d('attention', isNunchakuFlux);
                     d('i2f_mode', isNunchakuFlux);
-                    d('cpu_offload', isNunchakuFlux || isNunchakuQwen || isNunchakuZImage);
-                    d('num_blocks_on_gpu', isNunchakuQwen || isNunchakuZImage);
-                    d('use_pin_memory', isNunchakuQwen || isNunchakuZImage);
+                    d('cpu_offload', isNunchakuFlux || isNunchakuQwen);
+                    d('num_blocks_on_gpu', isNunchakuQwen);
+                    d('use_pin_memory', isNunchakuQwen);
                     d('gguf_dequant_dtype', isGGUF);
                     d('gguf_patch_dtype', isGGUF);
                     d('gguf_patch_on_device', isGGUF);

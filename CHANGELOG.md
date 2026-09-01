@@ -1,6 +1,41 @@
 # Changelog
 
-## 2026-08-24
+## 2026-09-01
+
+### Version: 1.0.6
+
+- **Feat**
+  - **LoRA Stack and Nunchaku PuLID ownership:** Adopt `Lora Stack [Eclipse]`, `Lora Stack apply [Eclipse]`, `Nunchaku PuLID Loader [Eclipse]`, and `Nunchaku PuLID Apply [Eclipse]` from Eclipse with their serialized IDs and input/output contracts unchanged. Serve the LoRA Stack mode-chip frontend from this pack and bind PuLID to the same vendored `ComfyFluxWrapper` used by Nunchaku Flux loading, eliminating cross-pack class-identity failures.
+- **Fix**
+  - Recognize Krea2 in Conditioning Zero Out logs as a variable-length model, preserving prompt-dependent token counts instead of reporting the connected model as unknown.
+  - Make the Nunchaku PuLID CPU InsightFace provider bypass cuDNN during face embedding preprocessing, allowing it to recover from mixed cuDNN sublibrary installations while restoring the previous backend state afterward. Report an actionable environment error when the CUDA provider encounters the same mismatch.
+  - Apply a self-detecting tuple-index compatibility fix to affected installed Nunchaku runtimes, resolve the Qwen transformer from both stable and nightly module layouts, avoid warning-only missing model-config probes, suppress only the empty-FP32-list and known PuLID dependency deprecations at their integration boundaries, and report accelerator cache cleanup only for available backends whose cache was actually cleared.
+  - Align Nunchaku ZImage with its vendored runtime contract: validate the active CUDA architecture and model quantization before loading, use ComfyUI dynamic VRAM management, hide Qwen-only offload controls, and omit those ineffective values from new templates and backend calls while preserving old workflow schemas.
+- **Docs**
+  - Document the transferred LoRA Stack and Nunchaku PuLID nodes, their optional Nunchaku dependencies, Smart Model Loader ownership, a validated Linux repair for duplicate ONNX Runtime installations and mismatched cuDNN/cuBLAS wheel contents, and the architecture-specific Nunchaku ZImage controls, hardware requirements, and successful live INT4 qualification.
+
+**Changed files:**
+- `README.md`
+- `Readme/Checkpoint_Loaders.md`
+- `Readme/Model_Loader_Security.md`
+- `Readme/Nunchaku_PuLID_CUDA_Troubleshooting.md` (new)
+- `Readme/Pipeline_Nodes.md`
+- `Readme/Smart_Loaders.md`
+- `core/common.py`
+- `core/model_loader/smart.py`
+- `core/model_loader_common.py`
+- `core/nunchaku_wrapper.py`
+- `extern/__init__.py` (new)
+- `extern/nunchaku_compat.py` (new)
+- `js/eclipse-lora-stack.js` (new)
+- `js/eclipse-model-loader.js`
+- `js/eclipse-smart-model-loader.js`
+- `py/RvCond_ConditioningZeroOut.py`
+- `py/RvTools_LoraStack.py` (new)
+- `py/RvTools_LoraStack_Apply.py` (new)
+- `py/RvTools_NunchakuPuLID.py` (new)
+- `pyproject.toml`
+- `requirements.txt`
 
 ### Version: 1.0.5
 
@@ -22,8 +57,6 @@
 - `py/RvLoader_SmartModelLoader.py`
 - `py/RvPipe_IO_CheckpointLoader.py`
 - `pyproject.toml`
-- `tests/test_pipeline_nodes.py`
-- `tools/pipeline-frontend-harness.mjs`
 
 ### Version: 1.0.4
 
@@ -91,8 +124,6 @@
 - `py/RvLoader_VaeLoaderVideoAudio.py`
 - `py/RvPipe_IO_CheckpointLoader.py`
 - `py/RvSampler_KSamplerPipe.py`
-- `tests/test_integrity_flow.py` (new)
-- `tools/pipeline-frontend-harness.mjs`
 - `workflows/iGEN_Simple.json` (new)
 
 ## 2026-08-22
@@ -107,7 +138,6 @@
 - `core/model_loader/pipes.py`
 - `core/model_loader/smart.py`
 - `Readme/Smart_Loaders.md`
-- `tests/test_pipeline_nodes.py`
 
 ### Version: 1.0.2
 
@@ -129,8 +159,6 @@
 - `js/smart-model-loader-settings.js`
 - `README.md`
 - `Readme/Model_Loader_Security.md`
-- `tests/test_config_store.py` (new)
-- `tools/chip-color-harness.mjs` (new)
 
 ## 2026-08-19
 
@@ -157,8 +185,6 @@
 - `js/eclipse-clip-text-encode-advanced.js` (new)
 - `js/eclipse-seed.js` (new)
 - `js/eclipse-sampler-tiled-decode.js` (new)
-- `tests/test_pipeline_nodes.py` (new)
-- `tools/pipeline-frontend-harness.mjs` (new)
 - `README.md`
 - `Readme/Pipeline_Nodes.md` (new)
 - `Readme/Smart_Loaders.md`

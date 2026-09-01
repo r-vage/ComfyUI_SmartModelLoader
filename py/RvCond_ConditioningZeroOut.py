@@ -43,6 +43,12 @@ for _name, _tokens in [
     if hasattr(comfy.supported_models, _name):
         _MODEL_TOKEN_MAP.append((getattr(comfy.supported_models, _name), _tokens))
 
+_VARIABLE_TOKEN_MODEL_CLASSES = tuple(
+    getattr(comfy.supported_models, name)
+    for name in ("Krea2",)
+    if hasattr(comfy.supported_models, name)
+)
+
 
 def _get_base_tokens_from_model(model) -> int:
     # Detect base token length from model config.
@@ -95,11 +101,17 @@ class RvCond_ConditioningZeroOut(io.ComfyNode):
         truncate = max_tokens
         if truncate == 0 and model is not None:
             truncate = _get_base_tokens_from_model(model)
+            config = model.model.model_config
+            config_name = type(config).__name__
             if truncate > 0:
-                config_name = type(model.model.model_config).__name__
                 log.debug(
                     _LOG_PREFIX,
                     f"Auto-detected {config_name}: base tokens = {truncate}",
+                )
+            elif isinstance(config, _VARIABLE_TOKEN_MODEL_CLASSES):
+                log.debug(
+                    _LOG_PREFIX,
+                    f"Auto-detected {config_name}: variable token length, no truncation",
                 )
             else:
                 log.debug(

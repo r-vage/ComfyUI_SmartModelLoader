@@ -1,7 +1,7 @@
 [project]
 name = "ComfyUI_SmartModelLoader"
 description = "Complete ComfyUI diffusion pipeline with secure model loading, text conditioning, pipe sampling, and verified downloads."
-version = "1.0.5"
+version = "1.0.6"
 license = {file = "LICENSE"}
 dependencies = [
     "torch",
@@ -162,6 +162,14 @@ ignore = [
     "BLE001", "FBT003", "PLC0415", "PLR0913", "PLR0917", "S110",
 ]
 "py/RvLoader_SmartModelLoader.py" = ["FURB110", "PLW0603"]
+# The transferred LoRA stack preserves its published V3 callback shape, while
+# Nunchaku application intentionally reaches optional/private adapter state.
+"py/RvTools_LoraStack.py" = ["C901", "PLR0913", "PLR0917"]
+"py/RvTools_LoraStack_Apply.py" = ["ERA001", "PLC0415", "SLF001", "TRY300"]
+# PuLID keeps optional imports lazy and uses ComfyUI's string-based folder API.
+"py/RvTools_NunchakuPuLID.py" = [
+    "PLC0415", "PLR0913", "PLR0917", "PTH103", "PTH110", "PTH118",
+]
 # Sampling is a single ComfyUI callback contract. Local time names preview files,
 # and random values are workflow seeds rather than security tokens.
 "py/RvSampler_KSamplerPipe.py" = [

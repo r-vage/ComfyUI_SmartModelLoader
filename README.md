@@ -4,7 +4,8 @@ A complete, pipe-first diffusion workflow for ComfyUI: load models, build text
 conditioning, sample, decode, and acquire verified model files without turning
 your canvas into a wall of connections.
 
-Version **1.0.2** includes eleven Nodes 2.0-ready nodes. ComfyUI Eclipse is
+Smart Model Loader includes fifteen Nodes 2.0-ready nodes, including the
+workflow-compatible LoRA Stack and Nunchaku PuLID tools. ComfyUI Eclipse is
 optional.
 
 ![Annotated Nodes 2.0 workflow connecting Smart Model Loader, IO Checkpoint Loader, CLIP encoders, and the pipe KSampler](Readme/assets/pipeline-overview.png)
@@ -15,6 +16,8 @@ optional.
   dimensions, sampler settings, seed, and names.
 - **One adaptive loader** supports checkpoints, UNets, Nunchaku, and GGUF while
   showing only the controls you enable.
+- **Matched Nunchaku tools** keep LoRA and PuLID operations on the same vendored
+  wrapper implementation used by the loader.
 - **A complete generation path** includes basic and advanced CLIP encoding,
   model-aware conditioning cleanup, pipe inspection, sampling, and VAE decode.
 - **Verified acquisition** inspects exact CivitAI or Hugging Face files before
@@ -27,9 +30,9 @@ optional.
 ### Find every node in one menu
 
 The pack has its own top-level **Smart Model Loader** category. Nodes are grouped
-into Conditioning, Loader, Pipe, and Sampler submenus.
+into Conditioning, Loader, Pipe, Sampler, and Tools submenus.
 
-![Annotated Nodes 2.0 Add Node menu showing the Smart Model Loader category and its four submenus](Readme/assets/node-menu.png)
+![Annotated Nodes 2.0 Add Node menu showing the Smart Model Loader category and its pipeline submenus](Readme/assets/node-menu.png)
 
 ### Start compact
 
@@ -131,9 +134,15 @@ choose their registered model destinations, and monitor the persistent queue.
 | Conditioning | `Conditioning Zero Out [Eclipse]` | Clear and optionally truncate conditioning |
 | Pipe | `IO Checkpoint Loader [Eclipse]` | Merge, override, and expose checkpoint PIPE values |
 | Sampler | `Eclipse KSampler (Pipe) [Eclipse]` | Sample, VAE-decode, preview, and update the PIPE |
+| Tools | `Lora Stack [Eclipse]` | Build a reusable stack of up to ten LoRAs |
+| Tools | `Lora Stack apply [Eclipse]` | Apply a stack to standard or Nunchaku Flux, Qwen, and ZImage models |
+| Loader | `Nunchaku PuLID Loader [Eclipse]` | Load a PuLID pipeline for a Nunchaku Flux model |
+| Tools | `Nunchaku PuLID Apply [Eclipse]` | Apply PuLID identity guidance to a Nunchaku Flux model |
 
 The `[Eclipse]` suffixes are compatibility identifiers. Smart Model Loader owns
-these eleven implementations and does not require Eclipse at runtime.
+these fifteen implementations and does not require Eclipse at runtime. The two
+PuLID nodes are available when the compatible `nunchaku` Python package and its
+PuLID dependencies are installed.
 
 ## Installation
 
@@ -155,9 +164,9 @@ python -m pip install -r requirements.txt
 Restart ComfyUI, then open **Add Node → Smart Model Loader**. Settings appear
 under **Smart Model Loader → General** and use `SmartModelLoader.*` IDs.
 
-Nunchaku and GGUF model types require their respective ComfyUI integrations.
-Without them, the standard checkpoint, UNet, conditioning, pipe, sampler, and
-Download Manager features remain available.
+Nunchaku and GGUF model types require their compatible Python packages. Without
+them, the standard checkpoint, UNet, conditioning, pipe, sampler, LoRA Stack,
+and Download Manager features remain available.
 
 ## Compatibility and ownership
 
@@ -176,6 +185,7 @@ Download Manager features remain available.
 - [Smart Model Loader reference](Readme/Smart_Loaders.md)
 - [Standalone loaders](Readme/Checkpoint_Loaders.md)
 - [Pipeline nodes](Readme/Pipeline_Nodes.md)
+- [Nunchaku PuLID CUDA troubleshooting](Readme/Nunchaku_PuLID_CUDA_Troubleshooting.md)
 - [Download Manager](Readme/Download_Manager.md)
 - [Security model](Readme/Model_Loader_Security.md)
 

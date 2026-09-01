@@ -1343,9 +1343,6 @@ def load_model(log_prefix: str, **kwargs) -> tuple[Any, Any, Any, Any, str, str]
             model_path=zimage_path,
             device=None,
             dtype=None,
-            cpu_offload=(cpu_offload == "enable" or cpu_offload == "auto"),
-            num_blocks_on_gpu=num_blocks_on_gpu,
-            use_pin_memory=(use_pin_memory == "enable"),
             model_type="zimage",
         )
         checkpoint_name = zimage_name

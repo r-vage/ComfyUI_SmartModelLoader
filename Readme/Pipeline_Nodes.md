@@ -41,6 +41,29 @@ behavior. The node supports standard or tiled VAE encode/decode and can show or
 hide both live and final previews. Its output is a copied pipe containing the
 sampled latent, decoded image, dimensions, conditioning, and resolved settings.
 
+## LoRA Stack and Nunchaku PuLID
+
+`Lora Stack [Eclipse]` builds a reusable stack of up to ten LoRAs in standard,
+model-only, or simple-weight mode. `Lora Stack apply [Eclipse]` applies that
+stack to standard ComfyUI models and to the Nunchaku Flux, Qwen, and ZImage
+models loaded by this pack.
+
+`Nunchaku PuLID Loader [Eclipse]` and `Nunchaku PuLID Apply [Eclipse]` load and
+apply Flux PuLID identity guidance. They intentionally use the same vendored
+`ComfyFluxWrapper` class as Smart Model Loader, preventing the same-named but
+different-class mismatch that occurs when loader and PuLID code come from
+separate packs. These two nodes require a compatible Nunchaku installation and
+its PuLID dependencies.
+
+The loader's **CPU** InsightFace provider is also the compatibility fallback for
+an environment that reports `CUDNN_STATUS_SUBLIBRARY_VERSION_MISMATCH`: ONNX face
+analysis runs on CPU, and cuDNN is bypassed only while PuLID extracts the face
+embedding. The previous PyTorch backend state is restored immediately afterward.
+The **CUDA** provider requires PyTorch, ONNX Runtime, and cuDNN to resolve one
+compatible CUDA library stack. See
+[Nunchaku PuLID CUDA troubleshooting](Nunchaku_PuLID_CUDA_Troubleshooting.md) for
+the validated duplicate-ONNX and mismatched-cuDNN repair procedure.
+
 ## Optional Eclipse integrations
 
 ComfyUI Eclipse is not required. If installed, its Context Image, Generation

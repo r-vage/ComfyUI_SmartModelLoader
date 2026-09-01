@@ -23,6 +23,13 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 import torch  # type: ignore
 from torch import nn  # type: ignore
 
+from ..extern.nunchaku_compat import (
+    get_declared_attribute,
+    install_pad_tensor_compatibility,
+    resolve_nunchaku_qwen_transformer,
+    suppress_empty_fp32_module_warning,
+    validate_nunchaku_hardware,
+)
 from .logger import log
 
 _LOG_PREFIX = "Nunchaku"
@@ -54,16 +61,13 @@ try:
 
     NunchakuFluxTransformer2dModel = _NunchakuFluxTransformer2dModel
     apply_cache_on_transformer = _apply_cache_on_transformer
+    install_pad_tensor_compatibility()
 
     log.msg(_LOG_PREFIX, "✓ Nunchaku base imports successful")
 
     # Qwen model from pip package
     try:
-        from nunchaku.models.qwenimage import (
-            NunchakuQwenImageTransformer2DModel as _NunchakuQwenImageTransformer2DModel,  # type: ignore
-        )
-
-        NunchakuQwenImageTransformer2DModel = _NunchakuQwenImageTransformer2DModel
+        NunchakuQwenImageTransformer2DModel = resolve_nunchaku_qwen_transformer()
         log.debug(_LOG_PREFIX, "Qwen model import successful")
     except ImportError as e:
         log.debug(_LOG_PREFIX, f"Qwen model not available: {e}")
@@ -427,7 +431,7 @@ def load_nunchaku_model(
 ) -> object:
     # Load a Nunchaku quantized model and wrap it for ComfyUI compatibility.
     #
-    # Supports both Flux and Qwen-Image Nunchaku quantized models.
+    # Supports Flux, Qwen-Image, and Z-Image Nunchaku quantized models.
     #
     # Parameters
     # ----------
@@ -438,7 +442,7 @@ def load_nunchaku_model(
     # dtype : torch.dtype, optional
     #     Data type for model (default: based on data_type parameter)
     # cpu_offload : bool, default=False
-    #     Enable CPU offload for low VRAM (<14GB)
+    #     Enable CPU offload for Flux/Qwen. ZImage uses ComfyUI dynamic VRAM.
     # cache_threshold : float, default=0.0
     #     First-block caching threshold (0=disabled, 0.12=typical)
     #     Higher values = faster but lower quality
@@ -456,7 +460,7 @@ def load_nunchaku_model(
     #     Use pinned memory for faster CPU-GPU transfer when CPU offload is enabled
     #     (Qwen models only)
     # model_type : str, default="flux"
-    #     Model architecture type: "flux" for Flux models or "qwen" for Qwen-Image models
+    #     Model architecture type: "flux", "qwen", or "zimage"
     #
     # Returns
     # -------
@@ -570,7 +574,13 @@ def load_nunchaku_model(
         f"Loading quantized model: {os.path.basename(model_path)}",
     )
     log.msg(f"Nunchaku {model_label}", f"  Device: {device}")
-    log.msg(f"Nunchaku {model_label}", f"  CPU Offload: {cpu_offload}")
+    if model_type == "zimage":
+        log.msg(
+            f"Nunchaku {model_label}",
+            "  Memory Management: ComfyUI dynamic VRAM",
+        )
+    else:
+        log.msg(f"Nunchaku {model_label}", f"  CPU Offload: {cpu_offload}")
 
     if model_type == "flux":
         log.msg(f"Nunchaku {model_label}", f"  Data Type: {data_type} ({dtype})")
@@ -581,7 +591,10 @@ def load_nunchaku_model(
         log.msg(f"Nunchaku {model_label}", f"  Num Blocks on GPU: {num_blocks_on_gpu}")
         log.msg(f"Nunchaku {model_label}", f"  Use Pin Memory: {use_pin_memory}")
     elif model_type == "zimage":
-        log.msg(f"Nunchaku {model_label}", f"  Data Type: {data_type} ({dtype})")
+        log.msg(
+            f"Nunchaku {model_label}",
+            "  Data Type: automatic (BF16 or Turing FP16 conversion)",
+        )
 
     # ============================================================
     # Load model based on type
@@ -602,10 +615,7 @@ def load_nunchaku_model(
 
         # Import utility functions from nunchaku package directly
         try:
-            from nunchaku.utils import (  # type: ignore
-                check_hardware_compatibility,
-                get_precision_from_quantization_config,
-            )
+            from nunchaku.utils import get_precision_from_quantization_config  # type: ignore
         except ImportError as e:
             raise ImportError(
                 f"Failed to import nunchaku utility functions: {e}\n\n"
@@ -619,7 +629,7 @@ def load_nunchaku_model(
         rank = quantization_config.get("rank", 32)
 
         # Check hardware compatibility
-        check_hardware_compatibility(quantization_config, device)
+        validate_nunchaku_hardware(quantization_config, device)
 
         # Prepare state dict (handle checkpoint format)
         diffusion_model_prefix = comfy.model_detection.unet_prefix_from_state_dict(sd)
@@ -650,7 +660,7 @@ def load_nunchaku_model(
 
         # Determine dtype
         unet_weight_dtype = list(model_config.supported_inference_dtypes)
-        if getattr(model_config, "scaled_fp8", None) is not None:
+        if get_declared_attribute(model_config, "scaled_fp8") is not None:
             weight_dtype = None
 
         if dtype is None:
@@ -746,6 +756,8 @@ def load_nunchaku_model(
         rank = quantization_config.get("rank", 32)
         skip_refiners = quantization_config.get("skip_refiners", False)
 
+        validate_nunchaku_hardware(quantization_config, device)
+
         # Check for diffusion model prefix
         diffusion_model_prefix = comfy.model_detection.unet_prefix_from_state_dict(sd)
         temp_sd = comfy.utils.state_dict_prefix_replace(
@@ -828,13 +840,14 @@ def load_nunchaku_model(
             raise ImportError("NunchakuFluxTransformer2dModel not available")
 
         # Load quantized Flux transformer
-        transformer, metadata = NunchakuFluxTransformer2dModel.from_pretrained(  # type: ignore
-            model_path,
-            offload=cpu_offload,
-            device=device,
-            torch_dtype=dtype,
-            return_metadata=True,
-        )
+        with suppress_empty_fp32_module_warning():
+            transformer, metadata = NunchakuFluxTransformer2dModel.from_pretrained(  # type: ignore
+                model_path,
+                offload=cpu_offload,
+                device=device,
+                torch_dtype=dtype,
+                return_metadata=True,
+            )
 
         # Apply caching if enabled
         if cache_threshold > 0:

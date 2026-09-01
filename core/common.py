@@ -351,6 +351,30 @@ def purge_vram() -> None:
 any_type = AnyType("*")
 
 
+def _clear_accelerator_cache(
+    backend: Any,
+    backend_name: str,
+    *,
+    verbose: bool,
+) -> bool:
+    """Clear an available accelerator cache and report only completed work."""
+    empty_cache = getattr(backend, "empty_cache", None)
+    if not callable(empty_cache):
+        return False
+
+    is_available = getattr(backend, "is_available", None)
+    try:
+        if callable(is_available) and not is_available():
+            return False
+        empty_cache()
+    except Exception:
+        return False
+
+    if verbose:
+        log.msg("Memory Cleanup", f"Cleared {backend_name} cache")
+    return True
+
+
 def cleanup_memory_before_load(aggressive: bool = True) -> None:
     # Clean up memory before loading a new model.
     #
@@ -391,42 +415,32 @@ def cleanup_memory_before_load(aggressive: bool = True) -> None:
                 torch_mod.cuda.empty_cache()
 
         # MPS (Apple Silicon)
-        if hasattr(torch_mod, "mps") and hasattr(torch_mod.mps, "empty_cache"):
-            try:
-                torch_mod.mps.empty_cache()
-                if aggressive:
-                    log.msg("Memory Cleanup", "Cleared MPS cache")
-            except Exception:
-                pass
+        _clear_accelerator_cache(
+            getattr(torch_mod, "mps", None),
+            "MPS",
+            verbose=aggressive,
+        )
 
         # XPU (Intel Arc)
-        if hasattr(torch_mod, "xpu") and hasattr(torch_mod.xpu, "empty_cache"):
-            try:
-                torch_mod.xpu.empty_cache()
-                if aggressive:
-                    log.msg("Memory Cleanup", "Cleared XPU cache")
-            except Exception:
-                pass
+        _clear_accelerator_cache(
+            getattr(torch_mod, "xpu", None),
+            "XPU",
+            verbose=aggressive,
+        )
 
         # NPU (Huawei/Ascend)
-        npu = getattr(torch_mod, "npu", None)
-        if npu is not None and hasattr(npu, "empty_cache"):
-            try:
-                npu.empty_cache()
-                if aggressive:
-                    log.msg("Memory Cleanup", "Cleared NPU cache")
-            except Exception:
-                pass
+        _clear_accelerator_cache(
+            getattr(torch_mod, "npu", None),
+            "NPU",
+            verbose=aggressive,
+        )
 
         # MLU (Cambricon)
-        mlu = getattr(torch_mod, "mlu", None)
-        if mlu is not None and hasattr(mlu, "empty_cache"):
-            try:
-                mlu.empty_cache()
-                if aggressive:
-                    log.msg("Memory Cleanup", "Cleared MLU cache")
-            except Exception:
-                pass
+        _clear_accelerator_cache(
+            getattr(torch_mod, "mlu", None),
+            "MLU",
+            verbose=aggressive,
+        )
 
     try:
         import comfy.model_management as mm  # type: ignore

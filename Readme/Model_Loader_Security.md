@@ -110,10 +110,10 @@ Smart Model Loader vendors the required ComfyUI adapter code for Nunchaku and GG
 separate ComfyUI-Nunchaku and ComfyUI-GGUF custom-node installations are not
 required.
 
-| Path | Automated contract coverage | Real-model qualification in 4.3.1 |
+| Path | Automated contract coverage | Real-model qualification in 1.0.6 |
 | --- | --- | --- |
 | Standard checkpoint / UNet | Yes | Not run |
-| Nunchaku Flux / Qwen / ZImage | Validation and vendored adapter paths | Not run with real weights; requires the optional `nunchaku` Python package and a compatible NVIDIA GPU |
+| Nunchaku Flux / Qwen / ZImage | Validation and vendored adapter paths, including CUDA architecture/quantization checks for Flux and ZImage | Flux and Qwen real loads passed; INT4 ZImage load plus a two-step 512×512 sample/decode passed on an RTX 4070 Ti SUPER, with ComfyUI's tiled VAE fallback recovering from regular-decode VRAM pressure |
 | GGUF | Validation and vendored adapter paths | Not run with real weights; requires the `gguf` Python package declared by Smart Model Loader |
 | External CLIP / VAE / audio VAE | Resolution and loader paths | Not run |
 | LoRA / sampling / BlockSwap | Shared adapter and policy paths | Not run with production weights |

@@ -229,17 +229,18 @@ These inputs are always shown regardless of chip state:
 
 ### Nunchaku-Specific Settings
 
-Visible only when `model_type` is Nunchaku Flux/Qwen/ZImage:
+The loader shows only settings implemented by the selected Nunchaku architecture:
 
-| Input | Default | Description |
-|-------|---------|-------------|
-| `data_type` | bfloat16 | Model precision |
-| `cache_threshold` | 0.0 | Cache threshold (0 = disabled) |
-| `attention` | flash-attention2 | Attention implementation |
-| `i2f_mode` | enabled | GEMM implementation |
-| `cpu_offload` | auto | CPU offload mode |
-| `num_blocks_on_gpu` | 30 | GPU blocks (Qwen/ZImage only) |
-| `use_pin_memory` | enable | Pinned memory for faster transfers |
+| Architecture | Visible settings |
+|--------------|------------------|
+| Nunchaku Flux | `data_type`, `cache_threshold`, `attention`, `i2f_mode`, `cpu_offload` |
+| Nunchaku Qwen | `cpu_offload`, `num_blocks_on_gpu`, `use_pin_memory` |
+| Nunchaku ZImage | None; ComfyUI handles dynamic VRAM and the loader selects the supported dtype path |
+
+Nunchaku ZImage checks the active CUDA GPU and the model's quantization metadata
+before loading. INT4 is supported on Turing/Ampere/Ada architectures covered by
+Nunchaku, while supported Blackwell devices require FP4. Regular BF16 or FP8
+Z-Image checkpoints are not Nunchaku models and should be loaded as **UNet Model**.
 
 ### GGUF-Specific Settings
 

@@ -10,3 +10,5 @@ einops
 
 # Optional: Nunchaku quantized model support (compiled CUDA package).
 # Install a ComfyUI-compatible nunchaku build separately when needed.
+# PuLID must have exactly one ONNX Runtime distribution. Do not install both
+# onnxruntime and onnxruntime-gpu; see Readme/Nunchaku_PuLID_CUDA_Troubleshooting.md.

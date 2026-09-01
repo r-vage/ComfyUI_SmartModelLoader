@@ -1339,9 +1339,6 @@ app.registerExtension({
                 } else if (mt === 'Nunchaku ZImage') {
                     const v = stripMissing(gv('zimage_name'));
                     if (v && v !== 'None') cfg.zimage_name = v;
-                    cfg.cpu_offload = gv('cpu_offload');
-                    cfg.num_blocks_on_gpu = gv('num_blocks_on_gpu');
-                    cfg.use_pin_memory = gv('use_pin_memory');
                 } else if (mt === 'GGUF Model') {
                     const v = stripMissing(gv('gguf_name'));
                     if (v && v !== 'None') cfg.gguf_name = v;
@@ -1518,9 +1515,9 @@ app.registerExtension({
                 d('cache_threshold', isNFlux);
                 d('attention', isNFlux);
                 d('i2f_mode', isNFlux);
-                d('cpu_offload', isNFlux || isNQwen || isNZimg);
-                d('num_blocks_on_gpu', isNQwen || isNZimg);
-                d('use_pin_memory', isNQwen || isNZimg);
+                d('cpu_offload', isNFlux || isNQwen);
+                d('num_blocks_on_gpu', isNQwen);
+                d('use_pin_memory', isNQwen);
                 d('gguf_dequant_dtype', isGGUF);
                 d('gguf_patch_dtype', isGGUF);
                 d('gguf_patch_on_device', isGGUF);

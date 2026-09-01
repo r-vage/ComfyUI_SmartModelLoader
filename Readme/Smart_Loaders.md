@@ -110,27 +110,30 @@ Select `model_type` to choose which format to load:
 ### Nunchaku Flux (Quantized)
 - Compressed Flux models using SVDQuant (INT4/FP4/FP8)
 - **Location:** `ComfyUI/models/diffusion_models/`
-- Requires [ComfyUI-Nunchaku](https://github.com/nunchaku-tech/ComfyUI-nunchaku) extension
+- Requires a compatible separately installed `nunchaku` Python wheel; the ComfyUI adapter is bundled with Smart Model Loader
 - Settings: data_type, cache_threshold, attention, i2f_mode, cpu_offload
 
 ### Nunchaku Qwen (Quantized)
 - Compressed Qwen image understanding models
 - **Location:** `ComfyUI/models/diffusion_models/`
-- Requires ComfyUI-Nunchaku extension
+- Requires a compatible separately installed `nunchaku` Python wheel
 - Settings: num_blocks_on_gpu, use_pin_memory, cpu_offload
 
 ### Nunchaku ZImage (Quantized)
-- ZImage quantized models
+- SVDQ-quantized Z-Image models; regular BF16/FP8 Z-Image checkpoints use the native UNet path instead
 - **Location:** `ComfyUI/models/diffusion_models/`
-- Same settings as Nunchaku Qwen
+- Requires external Qwen3 text encoder and Flux VAE loaders
+- Uses ComfyUI dynamic VRAM management; there are no Z-Image-specific offload widgets
+- Validates CUDA compute capability and model quantization before loading
 
 ### GGUF Model (Quantized)
 - GGUF format quantized diffusion models
 - **Location:** `ComfyUI/models/diffusion_models/`
-- Requires [ComfyUI-GGUF](https://github.com/city96/ComfyUI-GGUF) extension
+- Uses the bundled ComfyUI adapter and the `gguf` Python package declared by Smart Model Loader
 - Settings: gguf_dequant_dtype, gguf_patch_dtype, gguf_patch_on_device
 
-**Note:** Without Nunchaku or GGUF extensions installed, the loader still works — quantized model type options are simply disabled.
+**Note:** Without the optional Nunchaku or GGUF Python packages installed, the
+remaining model types and pipeline features continue to work.
 
 ---
 
@@ -346,13 +349,26 @@ These appear automatically based on the selected `model_type`:
 | `i2f_mode` | enabled, always | enabled |
 | `cpu_offload` | auto, enable, disable | auto |
 
-### Nunchaku Qwen / ZImage
+### Nunchaku Qwen
 
 | Setting | Options | Default |
 |---------|---------|---------|
 | `num_blocks_on_gpu` | 1–60 | 30 |
 | `use_pin_memory` | enable, disable | enable |
 | `cpu_offload` | auto, enable, disable | auto |
+
+### Nunchaku ZImage
+
+Nunchaku ZImage uses ComfyUI's dynamic VRAM management and automatically selects
+BF16, or the supported FP16 conversion path on Turing GPUs. The loader therefore
+shows only the model selector; Qwen's CPU-offload, GPU-block-count, and pinned-memory
+controls do not apply.
+
+Before weights are instantiated, the loader runs Nunchaku's hardware check. The
+current runtime accepts INT4 models on Turing, Ampere, and Ada GPUs
+(`SM75`, `SM80`, `SM86`, and `SM89`) and FP4 models on supported Blackwell GPUs
+(`SM120` and `SM121`). Other devices or mismatched quantization formats stop with
+an explicit error.
 
 ### GGUF
 
@@ -471,7 +487,7 @@ The Smart Model Loader outputs a single PIPE — use these dedicated nodes to ex
 
 ### Quantized Model Setup (Nunchaku Flux)
 
-1. Install [ComfyUI-Nunchaku](https://github.com/nunchaku-tech/ComfyUI-nunchaku)
+1. Install the `nunchaku` wheel matching the Python, PyTorch, and CUDA versions used by ComfyUI
 2. Set `model_type` to "Nunchaku Flux"
 3. Select model from `nunchaku_name`
 4. CLIP source auto-switches to "External" — select 2 CLIP files, set type to "flux"
@@ -503,7 +519,7 @@ The Smart Model Loader outputs a single PIPE — use these dedicated nodes to ex
 ## Troubleshooting
 
 ### Extension Not Found
-**"Nunchaku/GGUF support not available":** Install the required extension into `custom_nodes/` and restart ComfyUI.
+**"Nunchaku/GGUF support not available":** Install the compatible optional Python package into ComfyUI's environment and restart ComfyUI. Smart Model Loader already bundles the required ComfyUI adapter code.
 
 ### Model Loading Fails
 - Verify file is in the correct folder for its type
@@ -517,9 +533,15 @@ The Smart Model Loader outputs a single PIPE — use these dedicated nodes to ex
 
 ### Out of VRAM
 1. Use quantized models (Nunchaku or GGUF)
-2. Enable **block_swap** chip
-3. Enable CPU offload in quantization settings
-4. Reduce CLIP count, batch size, or resolution
+2. For standard models, enable the **block_swap** chip
+3. For Nunchaku Flux/Qwen, enable CPU offload in quantization settings
+4. Nunchaku ZImage uses ComfyUI dynamic VRAM management automatically
+5. Reduce CLIP count, batch size, or resolution
+
+The Z-Image model can fit while its Qwen3 text encoder and Flux VAE still create
+temporary VRAM pressure. If regular VAE decode runs out of memory, ComfyUI can
+retry with tiled decoding automatically; use an explicit tiled-decode node when
+you want predictable memory use.
 
 ### Template Won't Load
 - Check `ComfyUI_SmartModelLoader/templates/` for the JSON file
@@ -533,15 +555,14 @@ The Smart Model Loader outputs a single PIPE — use these dedicated nodes to ex
 
 ---
 
-## Required Extensions
+## Optional Runtime Packages
 
-| Extension | For | Repository |
-|-----------|-----|------------|
-| ComfyUI-Nunchaku | Nunchaku Flux/Qwen/ZImage quantized models | [nunchaku-tech/ComfyUI-nunchaku](https://github.com/nunchaku-tech/ComfyUI-nunchaku) |
-| ComfyUI-GGUF | GGUF quantized models and CLIP | [city96/ComfyUI-GGUF](https://github.com/city96/ComfyUI-GGUF) |
+| Package | For | Source |
+|---------|-----|--------|
+| `nunchaku` | Nunchaku Flux/Qwen/ZImage quantized models | [nunchaku-ai/nunchaku](https://github.com/nunchaku-ai/nunchaku) |
+| `gguf` | GGUF quantized models and CLIP | Declared in `requirements.txt` |
 
-```bash
-cd ComfyUI/custom_nodes
-git clone https://github.com/nunchaku-tech/ComfyUI-nunchaku
-git clone https://github.com/city96/ComfyUI-GGUF
-```
+Use a Nunchaku wheel built for the exact Python, PyTorch, CUDA, operating-system,
+and GPU combination used by ComfyUI. Do not install the separate
+ComfyUI-nunchaku or ComfyUI-GGUF custom-node packs solely for these loaders;
+Smart Model Loader vendors their required adapter code.
