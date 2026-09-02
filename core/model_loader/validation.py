@@ -8,6 +8,7 @@ import os
 import re
 from collections.abc import Collection, Mapping
 from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -164,31 +165,6 @@ _ENUMS = {
     "audio_vae_source": {"Baked", "External"},
     "verify_file": {"off", "sidecar", "verify"},
     "template_action": {"None", "Load", "Save"},
-    "clip_type": {
-        "flux",
-        "flux2",
-        "sd3",
-        "sdxl",
-        "stable_cascade",
-        "stable_audio",
-        "hunyuan_dit",
-        "mochi",
-        "ltxv",
-        "hunyuan_video",
-        "pixart",
-        "cosmos",
-        "cogvideox",
-        "lumina2",
-        "wan",
-        "hidream",
-        "chroma",
-        "ace",
-        "omnigen2",
-        "qwen_image",
-        "ideogram4",
-        "boogu",
-        "krea2",
-    },
     "download_target_role": set(DOWNLOAD_TARGET_ROLES),
     "model_precision": set(MODEL_PRECISION_OPTIONS),
 }
@@ -223,6 +199,27 @@ _AIR_RE = re.compile(r"^urn:air:[^:\s]+:[^:\s]+:civitai:\d+@\d+(?:\+\d+)?$")
 
 class LoaderValidationError(ValueError):
     pass
+
+
+def get_clip_type_options(clip_type_enum: type[Enum]) -> tuple[str, ...]:
+    """Return installed CLIP recipes in their enum declaration order."""
+    options = tuple(member.name.lower() for member in clip_type_enum)
+    if not options:
+        raise LoaderValidationError("Installed ComfyUI exposes no CLIP types")
+    return options
+
+
+def resolve_clip_type(clip_type: str, clip_type_enum: type[Enum]) -> Enum:
+    """Resolve one exact canonical CLIP recipe supported by this ComfyUI."""
+    if not isinstance(clip_type, str):
+        raise LoaderValidationError("Invalid clip_type")
+    enum_name = clip_type.upper()
+    member = clip_type_enum.__members__.get(enum_name)
+    if member is None or member.name != enum_name or clip_type != enum_name.lower():
+        raise LoaderValidationError(
+            f"Installed ComfyUI does not support clip_type '{clip_type}'",
+        )
+    return member
 
 
 @dataclass(frozen=True)
@@ -449,6 +446,7 @@ def validate_loader_request(
     kwargs: Mapping[str, Any],
     *,
     smart: bool,
+    clip_type_enum: type[Enum] | None = None,
 ) -> tuple[tuple[str, ...], dict[str, ResolvedModelFile]]:
     if not isinstance(kwargs, Mapping):
         raise LoaderValidationError("Loader request must be an object")
@@ -460,6 +458,10 @@ def validate_loader_request(
 
     for key, allowed in _ENUMS.items():
         _validate_enum(kwargs, key, allowed)
+    if "clip_type" in kwargs:
+        if clip_type_enum is None:
+            raise LoaderValidationError("clip_type capability is unavailable")
+        resolve_clip_type(kwargs["clip_type"], clip_type_enum)
     for key, (minimum, maximum) in _NUMERIC_BOUNDS.items():
         _validate_number(kwargs, key, minimum, maximum)
     for key in (

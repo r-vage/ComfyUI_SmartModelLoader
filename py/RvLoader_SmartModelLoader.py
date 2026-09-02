@@ -28,6 +28,7 @@ from ..core.model_loader.smart import execute_smart_request
 from ..core.model_loader.validation import (
     DOWNLOAD_TARGET_ROLES,
     MODEL_PRECISION_OPTIONS,
+    get_clip_type_options,
 )
 from ..core.model_loader_common import GGUF_AVAILABLE
 from ..core.nunchaku_wrapper import get_nunchaku_info
@@ -79,6 +80,10 @@ _print_support_messages()
 class RvLoader_SmartModelLoader(io.ComfyNode):
     @classmethod
     def define_schema(cls):
+        clip_type_options = get_clip_type_options(comfy.sd.CLIPType)
+        clip_type_default = (
+            "flux" if "flux" in clip_type_options else clip_type_options[0]
+        )
         weight_dtype_options = ["default", "fp8_e4m3fn", "fp8_e4m3fn_fast", "fp8_e5m2"]
 
         loras = ["None", *folder_paths.get_filename_list("loras")]
@@ -415,42 +420,9 @@ class RvLoader_SmartModelLoader(io.ComfyNode):
                 ),
                 io.Combo.Input(
                     "clip_type",
-                    options=[
-                        "flux",
-                        "flux2",
-                        "sd3",
-                        "sdxl",
-                        "stable_cascade",
-                        "stable_audio",
-                        "hunyuan_dit",
-                        "mochi",
-                        "ltxv",
-                        "hunyuan_video",
-                        "pixart",
-                        "cosmos",
-                        "cogvideox",
-                        "lumina2",
-                        "wan",
-                        "hidream",
-                        "chroma",
-                        "ace",
-                        "omnigen2",
-                        "qwen_image",
-                        "hunyuan_image",
-                        "hunyuan_video_15",
-                        "ovis",
-                        "kandinsky5",
-                        "kandinsky5_image",
-                        "newbie",
-                        "lens",
-                        "longcat_image",
-                        "pixeldit",
-                        "ideogram4",
-                        "boogu",
-                        "krea2",
-                    ],
-                    default="flux",
-                    tooltip="CLIP loader wrapping/architecture mapping to match the target model type (e.g. flux, sd3, sdxl, wan, mochi, ltxv).",
+                    options=list(clip_type_options),
+                    default=clip_type_default,
+                    tooltip="CLIP loader wrapping/architecture mapping to match the target model type (e.g. stable_diffusion, flux, sd3, wan, mochi, ltxv).",
                 ),
                 io.Boolean.Input(
                     "enable_clip_layer",

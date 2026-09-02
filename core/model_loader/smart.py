@@ -39,6 +39,7 @@ from .integrity import resolve_integrity_mode, verify_primary_model_integrity
 from .lifecycle import with_loader_execution
 from .loading import LoadRequest, LoadResult
 from .pipes import build_smart_sampler_fields
+from .validation import get_clip_type_options, resolve_clip_type
 
 _LOG_PREFIX = "Smart Model Loader"
 
@@ -46,7 +47,11 @@ _LOG_PREFIX = "Smart Model Loader"
 @with_loader_execution
 def execute_smart_request(**kwargs):
     # Validate every workflow value and selected file before cleanup or loading.
-    request = LoadRequest.from_kwargs(kwargs, smart=True)
+    request = LoadRequest.from_kwargs(
+        kwargs,
+        smart=True,
+        clip_type_enum=comfy.sd.CLIPType,
+    )
     selected = list(request.features)
     selected_set = set(selected)
 
@@ -130,7 +135,11 @@ def execute_smart_request(**kwargs):
     clip_name2 = kwargs.get("clip_name2", "None")
     clip_name3 = kwargs.get("clip_name3", "None")
     clip_name4 = kwargs.get("clip_name4", "None")
-    clip_type = kwargs.get("clip_type", "flux")
+    clip_type_options = get_clip_type_options(comfy.sd.CLIPType)
+    clip_type = kwargs.get(
+        "clip_type",
+        "flux" if "flux" in clip_type_options else clip_type_options[0],
+    )
     enable_clip_layer = kwargs.get("enable_clip_layer", True)
     stop_at_clip_layer = kwargs.get("stop_at_clip_layer", -2)
 
@@ -169,6 +178,9 @@ def execute_smart_request(**kwargs):
     is_gguf = model_type == "GGUF Model"
     use_baked_clip = clip_source == "Baked"
     use_baked_vae = vae_source == "Baked"
+    resolved_clip_type = None
+    if configure_clip and not use_baked_clip:
+        resolved_clip_type = resolve_clip_type(clip_type, comfy.sd.CLIPType)
 
     loaded_model = None
     loaded_clip = None
@@ -496,18 +508,6 @@ def execute_smart_request(**kwargs):
                 raise ValueError(
                     "No valid CLIP files found. Please select at least one CLIP model",
                 )
-
-            # Resolve clip type dynamically to prevent AttributeError on older ComfyUI installations
-            resolved_clip_type = comfy.sd.CLIPType.STABLE_DIFFUSION
-            if clip_type != "sdxl":
-                upper_name = clip_type.upper()
-                if hasattr(comfy.sd.CLIPType, upper_name):
-                    resolved_clip_type = getattr(comfy.sd.CLIPType, upper_name)
-                else:
-                    log.warning(
-                        _LOG_PREFIX,
-                        f"ComfyUI CLIPType does not support '{upper_name}', falling back to STABLE_DIFFUSION",
-                    )
 
             # Check if any CLIP file is GGUF — requires special loading path
             has_gguf_clip = any(p.lower().endswith(".gguf") for p in clip_paths)

@@ -19,8 +19,18 @@ class LoadRequest:
     smart: bool = False
 
     @classmethod
-    def from_kwargs(cls, kwargs: Mapping[str, Any], *, smart: bool = False):
-        features, files = validate_loader_request(kwargs, smart=smart)
+    def from_kwargs(
+        cls,
+        kwargs: Mapping[str, Any],
+        *,
+        smart: bool = False,
+        clip_type_enum: type[Any] | None = None,
+    ):
+        features, files = validate_loader_request(
+            kwargs,
+            smart=smart,
+            clip_type_enum=clip_type_enum,
+        )
         return cls(
             values=MappingProxyType(dict(kwargs)),
             features=features,

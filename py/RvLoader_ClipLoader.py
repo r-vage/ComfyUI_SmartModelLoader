@@ -14,6 +14,10 @@ from comfy_api.latest import io  # type: ignore
 from ..core import CATEGORY, SLIDER_DISPLAY
 from ..core.gguf_wrapper import GGUF_AVAILABLE, load_gguf_clip
 from ..core.logger import log
+from ..core.model_loader.validation import (
+    get_clip_type_options,
+    resolve_clip_type,
+)
 
 _LOG_PREFIX = "CLIP Loader"
 
@@ -21,6 +25,11 @@ _LOG_PREFIX = "CLIP Loader"
 class RvLoader_ClipLoader(io.ComfyNode):
     @classmethod
     def define_schema(cls):
+        clip_type_options = get_clip_type_options(comfy.sd.CLIPType)
+        clip_type_default = (
+            "flux" if "flux" in clip_type_options else clip_type_options[0]
+        )
+
         # Get available CLIP files from both clip and text_encoders folders (deduplicated)
         clip_files = list(folder_paths.get_filename_list("clip"))
         if "text_encoders" in folder_paths.folder_names_and_paths:
@@ -68,41 +77,8 @@ class RvLoader_ClipLoader(io.ComfyNode):
                 ),
                 io.Combo.Input(
                     "clip_type",
-                    options=[
-                        "flux",
-                        "flux2",
-                        "sd3",
-                        "sdxl",
-                        "stable_cascade",
-                        "stable_audio",
-                        "hunyuan_dit",
-                        "mochi",
-                        "ltxv",
-                        "hunyuan_video",
-                        "pixart",
-                        "cosmos",
-                        "cogvideox",
-                        "lumina2",
-                        "wan",
-                        "hidream",
-                        "chroma",
-                        "ace",
-                        "omnigen2",
-                        "qwen_image",
-                        "hunyuan_image",
-                        "hunyuan_video_15",
-                        "ovis",
-                        "kandinsky5",
-                        "kandinsky5_image",
-                        "newbie",
-                        "lens",
-                        "longcat_image",
-                        "pixeldit",
-                        "ideogram4",
-                        "boogu",
-                        "krea2",
-                    ],
-                    default="flux",
+                    options=list(clip_type_options),
+                    default=clip_type_default,
                     tooltip="CLIP architecture type",
                 ),
             ],
@@ -122,7 +98,12 @@ class RvLoader_ClipLoader(io.ComfyNode):
         clip_name2 = kwargs.get("clip_name2", "None")
         clip_name3 = kwargs.get("clip_name3", "None")
         clip_name4 = kwargs.get("clip_name4", "None")
-        clip_type = kwargs.get("clip_type", "flux")
+        clip_type_options = get_clip_type_options(comfy.sd.CLIPType)
+        clip_type = kwargs.get(
+            "clip_type",
+            "flux" if "flux" in clip_type_options else clip_type_options[0],
+        )
+        resolved_clip_type = resolve_clip_type(clip_type, comfy.sd.CLIPType)
 
         clip_names = [clip_name1, clip_name2, clip_name3, clip_name4]
         clip_paths = []
@@ -142,18 +123,6 @@ class RvLoader_ClipLoader(io.ComfyNode):
             raise ValueError(
                 "No valid CLIP files found. Please select at least one CLIP model.",
             )
-
-        # Resolve clip type dynamically to prevent AttributeError on older ComfyUI installations
-        resolved_clip_type = comfy.sd.CLIPType.STABLE_DIFFUSION
-        if clip_type != "sdxl":
-            upper_name = clip_type.upper()
-            if hasattr(comfy.sd.CLIPType, upper_name):
-                resolved_clip_type = getattr(comfy.sd.CLIPType, upper_name)
-            else:
-                log.warning(
-                    _LOG_PREFIX,
-                    f"ComfyUI CLIPType does not support '{upper_name}', falling back to STABLE_DIFFUSION",
-                )
 
         # Check if any CLIP file is GGUF — requires special loading path
         has_gguf_clip = any(p.lower().endswith(".gguf") for p in clip_paths)

@@ -2,6 +2,25 @@
 
 ## 2026-09-02
 
+### Version: 1.0.9
+
+- **Feat**
+  - Generate standalone and Smart Model Loader CLIP architecture choices from the installed ComfyUI `CLIPType` enum, preserving its declaration order, filtering unsupported recipes on older versions, and exposing future recipes automatically.
+- **Fix**
+  - Resolve CLIP selections only through the installed enum and reject stale, malformed, or unavailable values before checkpoint, CLIP, GGUF, or Nunchaku loading begins instead of silently falling back to Stable Diffusion.
+- **Breaking**
+  - Remove the external-CLIP `sdxl` alias; existing workflows must select the canonical `stable_diffusion` recipe.
+
+**Changed files:**
+- `Readme/Checkpoint_Loaders.md`
+- `Readme/Smart_Loaders.md`
+- `core/model_loader/loading.py`
+- `core/model_loader/smart.py`
+- `core/model_loader/validation.py`
+- `py/RvLoader_ClipLoader.py`
+- `py/RvLoader_SmartModelLoader.py`
+- `pyproject.toml`
+
 ### Version: 1.0.8
 
 - **Fix**

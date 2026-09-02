@@ -189,42 +189,11 @@ Set `clip_count` from 1 to 4. Each slot gets its own file selector (`clip_name1`
 
 **Supported formats:** `.safetensors` and `.gguf` (GGUF requires ComfyUI-GGUF extension)
 
-### CLIP Types (32 supported)
+### CLIP Types
 
-| Type | Use For |
-|------|---------|
-| `flux` | Flux models (typically 2 modules) |
-| `flux2` | Flux 2 models |
-| `sd3` | Stable Diffusion 3 |
-| `sdxl` | SDXL models |
-| `stable_cascade` | Stable Cascade |
-| `stable_audio` | Audio models |
-| `hunyuan_dit` | Hunyuan DiT |
-| `mochi` | Mochi video |
-| `ltxv` | LTXV video |
-| `hunyuan_video` | Hunyuan Video |
-| `pixart` | PixArt |
-| `cosmos` | Cosmos |
-| `cogvideox` | CogVideoX models |
-| `lumina2` | Lumina 2 |
-| `wan` | WAN video |
-| `hidream` | HiDream |
-| `chroma` | Chroma |
-| `ace` | ACE |
-| `omnigen2` | OmniGen2 |
-| `qwen_image` | Qwen image understanding |
-| `hunyuan_image` | Hunyuan Image |
-| `hunyuan_video_15` | Hunyuan Video 1.5 |
-| `ovis` | Ovis |
-| `kandinsky5` | Kandinsky 5 |
-| `kandinsky5_image` | Kandinsky 5 Image |
-| `lens` | LENS models |
-| `longcat_image` | Longcat Image models |
-| `pixeldit` | PixelDiT models |
-| `ideogram4` | Ideogram v4 models |
-| `boogu` | Boogu models |
-| `krea2` | Krea v2 models |
-| `newbie` | Other/experimental |
+The choices are generated from the installed `comfy.sd.CLIPType` enum in its declaration order. Older ComfyUI versions show only the recipes they support, and future enum members appear automatically without a Smart Model Loader update. `flux` is the default when installed; otherwise the first installed recipe is used. Stable Diffusion and SDXL external CLIP workflows use the canonical `stable_diffusion` choice.
+
+The loader resolves the selection against the installed enum again before checkpoint, CLIP, GGUF, or Nunchaku weights are loaded. Stale workflows and API prompts therefore receive a compatibility error rather than a silent fallback.
 
 ### CLIP Layer Trimming
 

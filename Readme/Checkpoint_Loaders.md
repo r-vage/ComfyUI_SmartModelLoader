@@ -28,7 +28,7 @@ ComfyUI Smart Model Loader provides five standalone loader nodes for users who p
 |------|--------|----------|
 | **Model Loader** | model, clip, vae, model_name | Direct outputs — wire straight to KSampler, CLIP Encode, VAE Decode |
 | **Model Loader Pipe** | pipe | Single pipe output — cleaner wiring with IO/Pipe Out extraction |
-| **CLIP Loader** | clip | External CLIP loading (1–4 modules, 32 supported architecture types) |
+| **CLIP Loader** | clip | External CLIP loading (1–4 modules, filtered to the installed ComfyUI architecture types) |
 | **VAE Loader** | vae, vae_name | External VAE loading with enhanced Wan 2.1 support |
 | **VAE Loader Video+Audio** | video_vae, audio_vae | Load video and audio VAEs on separate sockets for GGUF/LTX2 flows |
 
@@ -121,7 +121,9 @@ Loads 1–4 external CLIP text encoder modules. Required for UNet, Nunchaku, and
 
 ### Supported CLIP Types
 
-`flux`, `flux2`, `sd3`, `sdxl`, `stable_cascade`, `stable_audio`, `hunyuan_dit`, `mochi`, `ltxv`, `hunyuan_video`, `pixart`, `cosmos`, `lumina2`, `wan`, `hidream`, `chroma`, `ace`, `omnigen2`, `qwen_image`, `hunyuan_image`, `hunyuan_video_15`, `ovis`, `kandinsky5`, `kandinsky5_image`, `newbie`
+The choices are generated from the installed `comfy.sd.CLIPType` enum in its declaration order. Older ComfyUI versions therefore show only the recipes they support, while newly added enum members appear automatically after a ComfyUI update. `flux` is the default when installed; otherwise the first installed recipe is used. Stable Diffusion and SDXL external CLIP workflows use the canonical `stable_diffusion` choice.
+
+Selections are resolved against the installed enum again before any weights are loaded, so stale workflows and API prompts receive a compatibility error instead of silently falling back to another recipe.
 
 ### Output
 
