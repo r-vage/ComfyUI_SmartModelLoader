@@ -1111,21 +1111,23 @@ app.registerExtension({
                 const hadIntegrity = prevFeats.includes('integrity');
                 const hadLatent = prevFeats.includes('latent');
 
-                // Cache the user's current latent field values so they are not wiped
+                // Cache workflow-local values so template loading does not wipe them.
                 const prevRes = gv('resolution');
                 const prevWidth = gv('width');
                 const prevHeight = gv('height');
                 const prevBatch = gv('batch_size');
+                const prevDenoise = gv('denoise');
 
                 isLoadingTemplate = true;
                 try {
                     resetAllFields();
 
-                    // Restore the user's latent field values
+                    // Restore the workflow-local values.
                     if (prevRes !== undefined) sv('resolution', prevRes);
                     if (prevWidth !== undefined) sv('width', prevWidth);
                     if (prevHeight !== undefined) sv('height', prevHeight);
                     if (prevBatch !== undefined) sv('batch_size', prevBatch);
+                    if (prevDenoise !== undefined) sv('denoise', prevDenoise);
 
                     const templateFeatures = [];
                     if (data.configure_clip !== false) templateFeatures.push('clip');
@@ -1176,7 +1178,6 @@ app.registerExtension({
                     if (data.scheduler !== undefined) sv('scheduler', data.scheduler);
                     if (data.steps !== undefined) sv('steps', data.steps);
                     if (data.cfg !== undefined) sv('cfg', data.cfg);
-                    if (data.denoise !== undefined) sv('denoise', data.denoise);
                     if (data.flux_guidance !== undefined) sv('flux_guidance', data.flux_guidance);
                 } finally {
                     isLoadingTemplate = false;
@@ -1384,7 +1385,6 @@ app.registerExtension({
                     cfg.scheduler = gv('scheduler');
                     cfg.steps = gv('steps');
                     cfg.cfg = gv('cfg');
-                    cfg.denoise = gv('denoise');
                     const ct = gv('clip_type');
                     if (mt === 'Nunchaku Flux' || (['flux', 'flux2'].includes(ct) && ['UNet Model', 'GGUF Model'].includes(mt))) {
                         cfg.flux_guidance = gv('flux_guidance');

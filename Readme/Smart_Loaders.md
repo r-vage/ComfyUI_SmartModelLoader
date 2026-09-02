@@ -143,11 +143,11 @@ Enable the **templates** chip to access the template system.
 
 ### How Templates Work
 
-Templates save your complete loader configuration to `ComfyUI_SmartModelLoader/templates/`.
+Templates save the loader configuration to `ComfyUI_SmartModelLoader/templates/`. The workflow-local `denoise` value is excluded from templates.
 
-**Saving:** Set `template_action` to "Save", enter a name in `new_template_name`, and execute. The template captures all current settings.
+**Saving:** Set `template_action` to "Save", enter a name in `new_template_name`, and execute. The template captures all template-eligible settings.
 
-**Loading:** Set `template_action` to "Load" and select from the `template_name` dropdown. All settings reset to defaults first, then template values are applied — ensuring a clean state.
+**Loading:** Set `template_action` to "Load" and select from the `template_name` dropdown. Template-controlled settings reset to defaults first, then template values are applied; workflow-local values such as `denoise` remain unchanged.
 
 **Deleting:** With `template_action` set to "Load", select the template and click the "Delete Template" button.
 
@@ -158,7 +158,7 @@ Templates only save settings for enabled feature chips:
 - CLIP settings (if `clip` chip enabled)
 - VAE settings (if `vae` chip enabled)
 - Latent/resolution (if `latent` chip enabled)
-- Sampler settings (if `sampler` chip enabled)
+- Sampler settings except `denoise` (if `sampler` chip enabled)
 - LoRA slots (if `lora` chip enabled, all 3 slots saved even if off)
 - Model sampling method (if `model_sampling` chip enabled)
 
@@ -167,7 +167,7 @@ Templates only save settings for enabled feature chips:
 1. Configure the loader completely and test
 2. Enable **templates** chip → Save
 3. Next session: enable **templates** chip → Load
-4. All settings restored instantly
+4. All template-eligible settings restored instantly
 
 ---
 

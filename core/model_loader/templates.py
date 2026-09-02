@@ -85,6 +85,7 @@ def normalize_template_paths(config: dict[str, Any]) -> dict[str, Any]:
 
 def _ensure_template_compat(config: dict[str, Any]) -> dict[str, Any]:
     compatible = copy.deepcopy(config)
+    compatible.pop("denoise", None)
     has_features = isinstance(compatible.get("features"), list)
     has_booleans = any(key in compatible for key in _FEATURE_BOOL_MAP.values())
     if has_features and not has_booleans:
@@ -104,6 +105,7 @@ def _validate_template_object(config: Any) -> dict[str, Any]:
     if not isinstance(config, dict):
         raise TypeError("Template config must be a JSON object")
     normalized = normalize_template_paths(config)
+    normalized.pop("denoise", None)
     for field in _PATH_FIELDS:
         value = normalized.get(field)
         if value is not None and not isinstance(value, str):

@@ -2,6 +2,17 @@
 
 ## 2026-09-02
 
+### Version: 1.0.8
+
+- **Fix**
+  - Keep the Smart Model Loader `denoise` value independent of templates by omitting it from template saves and ignoring it during template loads, while preserving the default fallback for workflows saved before the widget existed.
+
+**Changed files:**
+- `Readme/Smart_Loaders.md`
+- `core/model_loader/templates.py`
+- `js/eclipse-smart-model-loader.js`
+- `pyproject.toml`
+
 ### Version: 1.0.7
 
 - **Fix**
