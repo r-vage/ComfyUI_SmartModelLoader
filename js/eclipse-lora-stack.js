@@ -27,8 +27,6 @@ function injectModeBarCSS() {
 }
 .lg-node .eclipse-ls-mode-bar {
     padding-inline: 0;
-    margin-inline-start: -12px;
-    width: calc(100% + 12px);
 }
 .eclipse-ls-mode-chip {
     cursor: pointer; padding: 2px 10px; border-radius: 4px;

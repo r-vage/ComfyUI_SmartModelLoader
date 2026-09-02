@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-09-02
+
+### Version: 1.0.7
+
+- **Fix**
+  - Restore the LoRA Stack mode-chip bar's Nodes 2.0 horizontal alignment by removing the transfer-time leftward offset and extra width.
+
+**Changed files:**
+- `js/eclipse-lora-stack.js`
+- `pyproject.toml`
+
 ## 2026-09-01
 
 ### Version: 1.0.6
