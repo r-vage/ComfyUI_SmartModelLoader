@@ -40,7 +40,7 @@ const FEATURE_OPTIONS = [
     { label: 'templates', tooltip: 'Toggle visibility of preset templates to quickly load, save, or delete entire node configurations' },
     { label: 'clip', tooltip: 'Toggle visibility of text encoder / CLIP loader settings (CLIP source, count, models, architecture type, layer skip)' },
     { label: 'vae', tooltip: 'Toggle visibility of VAE wrapper settings (Baked checkpoint vs External VAE files)' },
-    { label: 'audio_vae', tooltip: 'Toggle visibility of audio decoder/VAE parameters (useful for LTXV/LTX2 video generation)' },
+    { label: 'audio_vae', tooltip: 'Toggle audio decoder/VAE settings for ComfyUI-supported formats, including MiniMax H3 and LTX' },
     { label: 'latent', tooltip: 'Toggle visibility of empty latent resolution presets, custom sizing, and batch size controls' },
     { label: 'sampler', tooltip: 'Toggle visibility of ComfyUI KSampler algorithms, schedulers, steps, CFG, denoise, and Flux guidance scales' },
     { label: 'lora', tooltip: 'Toggle visibility of LoRA slots (enable switches, files, and weights)' },
@@ -121,7 +121,7 @@ app.registerExtension({
             nodeType.prototype.configure = function (data) {
                 const args = [...arguments];
                 const migratedData = migrateLegacySmartLoaderWidgetValues(data);
-                if (migratedData !== data) this._smartModelLoaderDenoiseMigrated = true;
+                if (migratedData !== data) this._smartModelLoaderWidgetValuesMigrated = true;
                 args[0] = migratedData;
                 return origConfigure.apply(this, args);
             };

@@ -452,6 +452,19 @@ class RvLoader_SmartModelLoader(io.ComfyNode):
                     default="None",
                     tooltip="Select a standalone VAE file to load from the vae directory.",
                 ),
+                # --- Audio VAE (visible when 'audio_vae' selected) ---
+                io.Combo.Input(
+                    "audio_vae_source",
+                    options=["External", "Baked"],
+                    default="External",
+                    tooltip="Source of the audio decoder/VAE:\n• External: Uses ComfyUI's general VAE loader for supported audio VAEs, including MiniMax H3 and LTX\n• Baked: Extracts LTX audio VAE weights directly from an all-in-one model file",
+                ),
+                io.Combo.Input(
+                    "audio_vae_name",
+                    options=["None", *folder_paths.get_filename_list("vae")],
+                    default="None",
+                    tooltip="Select a standalone ComfyUI-supported audio VAE, such as MiniMax H3 or LTX, from the vae directory.",
+                ),
                 # --- Latent configuration (visible when 'latent' selected) ---
                 io.Combo.Input(
                     "resolution",
@@ -608,19 +621,6 @@ class RvLoader_SmartModelLoader(io.ComfyNode):
                     min=1,
                     max=4096,
                     tooltip="Number of latent images to generate in parallel in a single execution batch.",
-                ),
-                # --- Audio VAE (LTXV/LTX2; visible when 'audio_vae' selected) ---
-                io.Combo.Input(
-                    "audio_vae_source",
-                    options=["External", "Baked"],
-                    default="External",
-                    tooltip="Source of the audio decoder/VAE:\n• External: Loads separate vocoder/audio-VAE files\n• Baked: Extracts audio VAE directly from LTX2 all-in-one model files",
-                ),
-                io.Combo.Input(
-                    "audio_vae_name",
-                    options=["None", *folder_paths.get_filename_list("vae")],
-                    default="None",
-                    tooltip="Select a standalone LTXV/LTX2 audio VAE file from the vae directory.",
                 ),
                 # --- Integrity / download (placed near the bottom so they don't float to the
                 # top when the templates feature is disabled) ---

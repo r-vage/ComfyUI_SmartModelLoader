@@ -2,6 +2,24 @@
 
 ## 2026-09-06
 
+### Version: 1.0.11
+
+- **Fix**
+  - Load standalone audio VAEs through ComfyUI's general VAE architecture detection, supporting MiniMax H3 and standalone LTX formats while reserving prefix extraction for baked LTX audio weights and failing before pipe construction when a requested audio VAE cannot load.
+  - Group Smart Loader audio-VAE controls directly beneath the regular VAE controls and migrate current and pre-denoise positional workflow arrays before configuration so every saved value remains attached to its original field.
+- **Docs**
+  - Describe general ComfyUI-supported audio VAEs in Smart Loader and dual-VAE tooltips and guides.
+
+**Changed files:**
+- `Readme/Checkpoint_Loaders.md`
+- `Readme/Smart_Loaders.md`
+- `core/model_loader/smart.py`
+- `js/eclipse-smart-model-loader.js`
+- `js/smart-model-loader-widget-migration.js`
+- `py/RvLoader_SmartModelLoader.py`
+- `py/RvLoader_VaeLoaderVideoAudio.py`
+- `pyproject.toml`
+
 ### Version: 1.0.10
 
 - **Feat**

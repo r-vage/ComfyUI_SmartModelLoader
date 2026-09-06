@@ -77,7 +77,7 @@ The node uses a combo-chip widget at the top to control which configuration sect
 | `templates` | off | Template save/load/delete system |
 | `clip` | **on** | CLIP source, type, ensemble, layer trimming |
 | `vae` | **on** | VAE source selection |
-| `audio_vae` | off | Video/audio dual VAE loading (e.g. LTXV/LTX2) |
+| `audio_vae` | off | Add a ComfyUI-supported audio VAE (for example MiniMax H3 or LTX) |
 | `latent` | off | Resolution presets, custom dimensions, batch size |
 | `sampler` | off | Sampler, scheduler, steps, CFG, denoise, and Flux guidance when applicable |
 | `lora` | off | Up to 3 LoRA slots |
@@ -215,8 +215,8 @@ Requires the **vae** chip to be enabled (on by default).
 
 Visible when the `audio_vae` chip is enabled.
 
-- **Baked:** Extracts audio VAE / vocoder weights directly from all-in-one LTX2/LTXV model files.
-- **External:** Loads a separate vocoder/audio VAE file from the `ComfyUI/models/vae/` directory.
+- **Baked:** Extracts prefixed LTX audio VAE / vocoder weights directly from an all-in-one LTX2/LTXV model file. The loader stops with an error if the requested baked component is absent.
+- **External:** Loads a separate audio VAE from `ComfyUI/models/vae/` through ComfyUI's general VAE loader. This supports formats ComfyUI recognizes, including MiniMax H3 and standalone LTX audio VAEs, and stops with an error if the selected file cannot load.
 
 ---
 

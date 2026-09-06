@@ -30,7 +30,7 @@ ComfyUI Smart Model Loader provides five standalone loader nodes for users who p
 | **Model Loader Pipe** | pipe | Single pipe output — cleaner wiring with IO/Pipe Out extraction |
 | **CLIP Loader** | clip | External CLIP loading (1–4 modules, filtered to the installed ComfyUI architecture types) |
 | **VAE Loader** | vae, vae_name | External VAE loading with enhanced Wan 2.1 support |
-| **VAE Loader Video+Audio** | video_vae, audio_vae | Load video and audio VAEs on separate sockets for GGUF/LTX2 flows |
+| **VAE Loader Video+Audio** | video_vae, audio_vae | Load video and ComfyUI-supported audio VAEs on separate sockets |
 
 All standalone loaders use the same combo-chip feature system as the Smart Model Loader (where applicable) but focus purely on model loading.
 
@@ -171,14 +171,14 @@ Loads an external VAE model with enhanced architecture detection (including Wan 
 
 **Node:** `VAE Loader Video+Audio [Eclipse]` — Category: `Smart Model Loader > Loader`
 
-Loads both a video/image VAE and an LTXV/LTX2 audio VAE (or vocoder weights) in a single node, both from the `models/vae/` directory, and outputs them on separate sockets. This is highly useful for the GGUF LTX2 video generation flow where neither the video VAE nor the audio VAE is baked into the diffusion model file.
+Loads both a video/image VAE and a ComfyUI-supported audio VAE in a single node, both from the `models/vae/` directory, and outputs them on separate sockets. ComfyUI performs architecture detection for formats including MiniMax H3 and standalone LTX audio VAEs. This is also useful for GGUF/LTX2 flows where neither VAE is baked into the diffusion model file.
 
 ### Inputs
 
 | Input | Default | Description |
 |-------|---------|-------------|
 | `video_vae` | `None` | Video VAE model file from `models/vae/` |
-| `audio_vae` | `None` | Audio VAE / Vocoder weights file from `models/vae/` |
+| `audio_vae` | `None` | ComfyUI-supported audio VAE file (for example MiniMax H3 or LTX) from `models/vae/` |
 | `disable_offload` | `true` | Keep VAEs on GPU for faster decoding (disable = allow CPU offloading) |
 
 ### Outputs
@@ -405,7 +405,7 @@ If Model Loader outputs None for clip or vae, the selected model type doesn't in
 | Setting | Default | Purpose |
 |---------|---------|---------|
 | video_vae | None | Select Video VAE from vae folder |
-| audio_vae | None | Select Audio VAE / Vocoder weights from vae folder |
+| audio_vae | None | Select a ComfyUI-supported Audio VAE, such as MiniMax H3 or LTX, from the vae folder |
 | disable_offload | True | Keep VAEs on GPU for faster decoding |
 
 **Outputs:** video_vae, audio_vae

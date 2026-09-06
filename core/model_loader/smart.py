@@ -562,7 +562,7 @@ def execute_smart_request(**kwargs):
                 loaded_vae = load_custom_vae(vae_name)
 
     # ============================================================
-    # STEP 3.5: Load Audio VAE (LTXV/LTX2)
+    # STEP 3.5: Load Audio VAE
     # ============================================================
 
     loaded_audio_vae = None
@@ -579,30 +579,42 @@ def execute_smart_request(**kwargs):
             elif is_unet and unet_name not in (None, "", "None"):
                 baked_model_path = str(request.files["unet_name"].path)
             if baked_model_path:
-                loaded_audio_vae = load_audio_vae_from_path(baked_model_path)
+                try:
+                    loaded_audio_vae = load_audio_vae_from_path(baked_model_path)
+                except Exception as exc:
+                    raise RuntimeError(
+                        "Failed to extract the baked LTX audio VAE from "
+                        f"'{os.path.basename(baked_model_path)}': {exc}",
+                    ) from exc
                 if loaded_audio_vae is None:
-                    log.warning(
-                        _LOG_PREFIX,
+                    raise ValueError(
                         "No baked audio VAE (audio_vae./vocoder. keys) found in "
-                        f"'{os.path.basename(baked_model_path)}'",
+                        f"'{os.path.basename(baked_model_path)}'. Select an LTX "
+                        "all-in-one checkpoint/UNet or use an external audio VAE.",
                     )
             else:
-                log.warning(
-                    _LOG_PREFIX,
-                    "Baked audio VAE requires a Standard Checkpoint or UNet Model file - select 'External' instead",
+                raise ValueError(
+                    "Baked audio VAE requires a Standard Checkpoint or UNet Model "
+                    "file. Select 'External' for a standalone audio VAE.",
                 )
-        # External audio VAE file (ships as a checkpoint).
+        # Standalone audio VAEs use ComfyUI's general VAE architecture detection.
+        # Prefix filtering is reserved for audio weights baked into LTX model files.
         elif audio_vae_name in (None, "", "None"):
-            log.warning(
-                _LOG_PREFIX, "External audio VAE requested but none selected",
+            raise ValueError(
+                "External audio VAE requested but none selected. Choose a file "
+                "from the vae directory.",
             )
         else:
-            audio_vae_path = request.files["audio_vae_name"].path
-            loaded_audio_vae = load_audio_vae_from_path(str(audio_vae_path))
+            try:
+                loaded_audio_vae = load_custom_vae(audio_vae_name)
+            except Exception as exc:
+                raise RuntimeError(
+                    f"Failed to load external audio VAE '{audio_vae_name}' with "
+                    f"ComfyUI's VAE loader: {exc}",
+                ) from exc
             if loaded_audio_vae is None:
-                log.warning(
-                    _LOG_PREFIX,
-                    f"No audio VAE weights (audio_vae./vocoder. keys) found in '{audio_vae_name}'",
+                raise RuntimeError(
+                    f"ComfyUI's VAE loader returned no audio VAE for '{audio_vae_name}'.",
                 )
 
     # ============================================================
@@ -736,11 +748,7 @@ def execute_smart_request(**kwargs):
         lora_names=lora_string,
         clip=loaded_clip if configure_clip else OMIT,
         vae=loaded_vae if configure_vae else OMIT,
-        audio_vae=(
-            loaded_audio_vae
-            if (configure_audio_vae and loaded_audio_vae is not None)
-            else OMIT
-        ),
+        audio_vae=loaded_audio_vae if configure_audio_vae else OMIT,
         latent=(
             {
                 "samples": latent_tensor,

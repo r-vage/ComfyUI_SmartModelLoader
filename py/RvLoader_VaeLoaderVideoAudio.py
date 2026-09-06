@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-# VAE Loader Video+Audio [Eclipse] — Dual VAE loader for LTXV/LTX2
+# VAE Loader Video+Audio [Eclipse] — Dual video/image and audio VAE loader
 #
-# Loads a video/image VAE and an LTXV/LTX2 audio VAE in one node, both from the
-# vae folder, and outputs them on separate sockets. Intended for the GGUF LTX2
-# flow where neither VAE is baked into the diffusion model file.
+# Loads a video/image VAE and any ComfyUI-supported audio VAE in one node, both
+# from the vae folder, and outputs them on separate sockets.
 import folder_paths  # type: ignore
 from comfy_api.latest import io  # type: ignore
 
@@ -25,9 +24,8 @@ class RvLoader_VaeLoaderVideoAudio(io.ComfyNode):
             node_id="VAE Loader Video+Audio [Eclipse]",
             display_name="VAE Loader Video+Audio",
             category=CATEGORY.MAIN.value + CATEGORY.LOADER.value,
-            description="Load a video/image VAE and an LTXV/LTX2 audio VAE in one node "
-            "(both from the vae folder). Useful for GGUF LTX2 where neither "
-            "VAE is baked into the model file.",
+            description="Load a video/image VAE and a ComfyUI-supported audio VAE "
+            "in one node (both from the vae folder), including MiniMax H3 and LTX.",
             inputs=[
                 io.Combo.Input(
                     "video_vae",
@@ -39,7 +37,7 @@ class RvLoader_VaeLoaderVideoAudio(io.ComfyNode):
                     "audio_vae",
                     options=vaes,
                     default="None",
-                    tooltip="LTXV/LTX2 audio VAE file (audio_vae./vocoder. weights) from the vae folder. Set to None to skip.",
+                    tooltip="ComfyUI-supported audio VAE file, such as MiniMax H3 or LTX, from the vae folder. Set to None to skip.",
                 ),
                 io.Boolean.Input(
                     "disable_offload",
