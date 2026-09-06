@@ -1096,13 +1096,20 @@ def _promote_verified_staging(
     os.replace(staging, destination)
 
 
-def _notify_phase(phase_cb, phase: str, downloaded: int = 0, total: int = 0) -> None:
+def _notify_phase(
+    phase_cb,
+    phase: str,
+    downloaded: int = 0,
+    total: int = 0,
+    *,
+    log_prefix: str = _LOG_PREFIX,
+) -> None:
     if phase_cb is None:
         return
     try:
         phase_cb(phase, downloaded, total)
     except (AttributeError, RuntimeError, TypeError, ValueError):
-        log.debug(_LOG_PREFIX, "Download phase callback failed")
+        log.debug(log_prefix, "Download phase callback failed")
 
 
 def _download_file_locked(
@@ -1122,6 +1129,15 @@ def _download_file_locked(
     keep_partial_on_cancel: bool = False,
     provider_name: str = "CivitAI",
 ) -> bool:
+    def report_phase(phase: str, downloaded: int = 0, total: int = 0) -> None:
+        _notify_phase(
+            phase_cb,
+            phase,
+            downloaded,
+            total,
+            log_prefix=provider_name,
+        )
+
     valid_sha256 = _valid_sha(expected_sha256)
     valid_git_blob = (
         isinstance(expected_git_blob, str)
@@ -1129,13 +1145,13 @@ def _download_file_locked(
     )
     if valid_sha256 == valid_git_blob:
         log.error(
-            _LOG_PREFIX,
+            provider_name,
             "Download rejected because exactly one valid provider digest is required",
         )
         return False
     destination = Path(destination)
     if destination.is_symlink() or destination.parent.is_symlink():
-        log.error(_LOG_PREFIX, "Download destination may not be a symlink")
+        log.error(provider_name, "Download destination may not be a symlink")
         return False
     destination.parent.mkdir(parents=True, exist_ok=True)
     staging = Path(f"{destination}.part")
@@ -1149,17 +1165,17 @@ def _download_file_locked(
     digest_algorithm = "sha256" if valid_sha256 else "git-sha1"
 
     if staging.is_symlink() or (staging.exists() and not staging.is_file()):
-        log.error(_LOG_PREFIX, "Download staging path must be a non-symlink regular file")
+        log.error(provider_name, "Download staging path must be a non-symlink regular file")
         return False
 
     if destination.exists():
         destination_size = destination.stat().st_size if destination.is_file() else 0
-        _notify_phase(phase_cb, "verifying", 0, destination_size)
+        report_phase("verifying", 0, destination_size)
         if destination.is_file() and hmac.compare_digest(
             _provider_digest_file(
                 destination,
-                progress_cb=lambda processed, total: _notify_phase(
-                    phase_cb, "verifying", processed, total,
+                progress_cb=lambda processed, total: report_phase(
+                    "verifying", processed, total,
                 ),
                 algorithm=digest_algorithm,
             ),
@@ -1181,23 +1197,23 @@ def _download_file_locked(
         with response:
             if partial_size:
                 if response.status_code == 416:
-                    _notify_phase(phase_cb, "hashing", 0, partial_size)
+                    report_phase("hashing", 0, partial_size)
                     if hmac.compare_digest(
                         _provider_digest_file(
                             staging,
-                            progress_cb=lambda processed, total: _notify_phase(
-                                phase_cb, "hashing", processed, total,
+                            progress_cb=lambda processed, total: report_phase(
+                                "hashing", processed, total,
                             ),
                             algorithm=digest_algorithm,
                         ),
                         expected,
                     ):
                         if require_idle_promotion:
-                            _notify_phase(phase_cb, "locking", partial_size, partial_size)
+                            report_phase("locking", partial_size, partial_size)
                             with maintenance_if_idle() as acquired:
                                 if not acquired:
                                     raise BlockingIOError("Prompt queue is active")
-                                _notify_phase(phase_cb, "promoting", partial_size, partial_size)
+                                report_phase("promoting", partial_size, partial_size)
                                 _promote_verified_staging(
                                     staging,
                                     destination,
@@ -1206,7 +1222,7 @@ def _download_file_locked(
                                     allow_replace_existing=allow_replace_existing,
                                 )
                         else:
-                            _notify_phase(phase_cb, "promoting", partial_size, partial_size)
+                            report_phase("promoting", partial_size, partial_size)
                             _promote_verified_staging(
                                 staging,
                                 destination,
@@ -1266,7 +1282,7 @@ def _download_file_locked(
 
             downloaded = partial_size
             transfer = _activate_transfer(download_id, response)
-            _notify_phase(phase_cb, "transferring", downloaded, predicted_total or 0)
+            report_phase("transferring", downloaded, predicted_total or 0)
             try:
                 with _open_staging_file(
                     staging,
@@ -1288,7 +1304,7 @@ def _download_file_locked(
                             try:
                                 progress_cb(downloaded, predicted_total or 0)
                             except (AttributeError, RuntimeError, TypeError, ValueError):
-                                log.debug(_LOG_PREFIX, "Download progress callback failed")
+                                log.debug(provider_name, "Download progress callback failed")
                     if _close_transfer_window(download_id, transfer):
                         raise DownloadCancelled("Download transfer was cancelled")
                     staging_file.flush()
@@ -1298,28 +1314,28 @@ def _download_file_locked(
             if predicted_total is not None and downloaded != predicted_total:
                 raise OSError("Download was truncated")
 
-        _notify_phase(phase_cb, "hashing", 0, downloaded)
+        report_phase("hashing", 0, downloaded)
         actual = _provider_digest_file(
             staging,
-            progress_cb=lambda processed, total: _notify_phase(
-                phase_cb, "hashing", processed, total,
+            progress_cb=lambda processed, total: report_phase(
+                "hashing", processed, total,
             ),
             algorithm=digest_algorithm,
         )
         if not hmac.compare_digest(actual, expected):
             staging.unlink(missing_ok=True)
-            _notify_phase(phase_cb, "failed", downloaded, downloaded)
+            report_phase("failed", downloaded, downloaded)
             log.error(
-                _LOG_PREFIX,
+                provider_name,
                 f"Downloaded bytes did not match the {provider_name} provider digest",
             )
             return False
         if require_idle_promotion:
-            _notify_phase(phase_cb, "locking", downloaded, predicted_total or downloaded)
+            report_phase("locking", downloaded, predicted_total or downloaded)
             with maintenance_if_idle() as acquired:
                 if not acquired:
                     raise BlockingIOError("Prompt queue is active")
-                _notify_phase(phase_cb, "promoting", downloaded, predicted_total or downloaded)
+                report_phase("promoting", downloaded, predicted_total or downloaded)
                 _promote_verified_staging(
                     staging,
                     destination,
@@ -1328,7 +1344,7 @@ def _download_file_locked(
                     allow_replace_existing=allow_replace_existing,
                 )
         else:
-            _notify_phase(phase_cb, "promoting", downloaded, predicted_total or downloaded)
+            report_phase("promoting", downloaded, predicted_total or downloaded)
             _promote_verified_staging(
                 staging,
                 destination,
@@ -1344,8 +1360,8 @@ def _download_file_locked(
         if not keep_partial_on_cancel:
             staging.unlink(missing_ok=True)
         _fsync_directory(destination.parent)
-        _notify_phase(phase_cb, "aborted")
-        log.msg(_LOG_PREFIX, f"Download {download_id or ''} cancelled during transfer")
+        report_phase("aborted")
+        log.msg(provider_name, f"Download {download_id or ''} cancelled during transfer")
         raise
     except BlockingIOError:
         raise
@@ -1355,11 +1371,11 @@ def _download_file_locked(
             if not keep_partial_on_cancel:
                 staging.unlink(missing_ok=True)
             _fsync_directory(destination.parent)
-            _notify_phase(phase_cb, "aborted")
-            log.msg(_LOG_PREFIX, f"Download {download_id or ''} cancelled during transfer")
+            report_phase("aborted")
+            log.msg(provider_name, f"Download {download_id or ''} cancelled during transfer")
             raise DownloadCancelled("Download transfer was cancelled") from error
-        _notify_phase(phase_cb, "failed")
-        log.error(_LOG_PREFIX, f"Download failed: {type(error).__name__}: {error}")
+        report_phase("failed")
+        log.error(provider_name, f"Download failed: {type(error).__name__}: {error}")
         return False
 
 

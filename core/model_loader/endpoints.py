@@ -18,7 +18,13 @@ from ..logger import log
 from .integrity import invalidate_cache_entry, verify
 from .lifecycle import maintenance_if_idle
 from .templates import TEMPLATE_DIR, load_template
-from .validation import resolve_model_file
+from .validation import (
+    GGUF_EXTENSIONS,
+    LEGACY_MODEL_EXTENSIONS,
+    SAFE_TENSOR_EXTENSIONS,
+    ModelFileNotFoundError,
+    resolve_model_file,
+)
 
 MAX_JSON_REQUEST_BYTES = 64 * 1024
 _LOG_PREFIX = "ModelLoaderEndpoints"
@@ -43,6 +49,9 @@ _MODEL_FIELDS = {
     "Nunchaku ZImage": ("diffusion_models", "zimage_name", "model"),
     "GGUF Model": ("diffusion_models_gguf", "gguf_name", "model_gguf"),
 }
+_MODEL_FILE_EXTENSIONS = (
+    SAFE_TENSOR_EXTENSIONS | GGUF_EXTENSIONS | LEGACY_MODEL_EXTENSIONS
+)
 
 
 def _fsync_directory(path: Path) -> None:
@@ -375,6 +384,40 @@ def promote_verified_replacement(
         return deleted
 
 
+def _legacy_sidecar_has_sibling_owner(target: Path) -> bool:
+    try:
+        siblings = target.parent.iterdir()
+        return any(
+            sibling != target
+            and sibling.stem == target.stem
+            and sibling.suffix.lower() in _MODEL_FILE_EXTENSIONS
+            and (sibling.is_file() or sibling.is_symlink())
+            for sibling in siblings
+        )
+    except OSError:
+        return True
+
+
+def _deletable_integrity_sidecars(target: Path) -> tuple[Path, ...]:
+    canonical = Path(f"{target}.sha256")
+    expected = Path(f"{target}.eclipse.json")
+    sidecars = [
+        sidecar
+        for sidecar in (canonical, expected)
+        if sidecar.is_file() and not sidecar.is_symlink()
+    ]
+
+    legacy = target.with_suffix(".sha256")
+    if (
+        legacy not in sidecars
+        and legacy.is_file()
+        and not legacy.is_symlink()
+        and not _legacy_sidecar_has_sibling_owner(target)
+    ):
+        sidecars.append(legacy)
+    return tuple(sidecars)
+
+
 def delete_template_transaction(
     name: str,
     *,
@@ -397,21 +440,30 @@ def delete_template_transaction(
                 role, field, reference_type = selection
                 filename = config.get(field)
                 if isinstance(filename, str) and filename not in {"", "None"}:
-                    target = resolve_model_file(
-                        role,
-                        filename,
-                        reference_type=reference_type,
-                    ).path
-                    targets.append(target)
-                    deleted_names.append(filename)
-                    sidecars = {
-                        Path(f"{target}.sha256"),
-                        target.with_suffix(".sha256"),
-                        Path(f"{target}.eclipse.json"),
-                    }
-                    for sidecar in sidecars:
-                        if sidecar.is_file() and not sidecar.is_symlink():
-                            targets.append(sidecar)
+                    try:
+                        target = resolve_model_file(
+                            role,
+                            filename,
+                            reference_type=reference_type,
+                        ).path
+                    except ModelFileNotFoundError as error:
+                        sidecar_groups = [
+                            sidecars
+                            for candidate in error.candidate_paths
+                            if (sidecars := _deletable_integrity_sidecars(candidate))
+                        ]
+                        if len(sidecar_groups) == 1:
+                            targets.extend(sidecar_groups[0])
+                        elif len(sidecar_groups) > 1:
+                            log.warning(
+                                _LOG_PREFIX,
+                                "Preserved orphaned integrity sidecars because "
+                                "multiple configured model roots matched",
+                            )
+                    else:
+                        targets.append(target)
+                        deleted_names.append(filename)
+                        targets.extend(_deletable_integrity_sidecars(target))
 
         template_target = Path(TEMPLATE_DIR) / f"{name}.json"
         if template_target.is_symlink() or not template_target.is_file():

@@ -1,5 +1,22 @@
 # Changelog
 
+## 2026-09-06
+
+### Version: 1.0.10
+
+- **Feat**
+  - Add Select All and Deselect All controls to the Download Manager queue for bulk job actions and bundle export.
+- **Fix**
+  - Label verified-download diagnostics with the active provider so Hugging Face failures no longer appear under the CivitAI prefix.
+  - Allow confirmed template deletion when its model is already absent, transactionally removing orphaned integrity sidecars only when one configured model root owns them and preserving ambiguous, shared, or symlinked sidecars.
+
+**Changed files:**
+- `core/model_loader/acquisition.py`
+- `core/model_loader/endpoints.py`
+- `core/model_loader/validation.py`
+- `js/smart-model-loader-download-manager.js`
+- `pyproject.toml`
+
 ## 2026-09-02
 
 ### Version: 1.0.9

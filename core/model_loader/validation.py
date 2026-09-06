@@ -201,6 +201,14 @@ class LoaderValidationError(ValueError):
     pass
 
 
+class ModelFileNotFoundError(LoaderValidationError):
+    """A model reference was safe and valid, but absent from every candidate root."""
+
+    def __init__(self, message: str, candidate_paths: Collection[Path]) -> None:
+        super().__init__(message)
+        self.candidate_paths = tuple(dict.fromkeys(candidate_paths))
+
+
 def get_clip_type_options(clip_type_enum: type[Enum]) -> tuple[str, ...]:
     """Return installed CLIP recipes in their enum declaration order."""
     options = tuple(member.name.lower() for member in clip_type_enum)
@@ -307,11 +315,24 @@ def resolve_model_file(
     if any(part in {"", ".", ".."} for part in posix_name.parts):
         raise LoaderValidationError("Model path contains an unsafe component")
 
+    extension = posix_name.suffix.lower()
+    if not _extension_allowed(extension, reference_type):
+        if extension in LEGACY_MODEL_EXTENSIONS:
+            raise LoaderValidationError(
+                "Legacy model formats are disabled by the administrator",
+            )
+        raise LoaderValidationError(
+            f"Unsupported {reference_type} extension '{extension or '<none>'}'",
+        )
+
     role_candidates = [role]
     if role == "diffusion_models_gguf":
         role_candidates.append("diffusion_models")
 
     last_error = "Model file was not found in its declared folder role"
+    missing_candidates: list[Path] = []
+    candidate_present = False
+    unsafe_resolution = False
     for candidate_role in role_candidates:
         if candidate_role not in folder_paths.folder_names_and_paths:
             continue
@@ -321,8 +342,23 @@ def resolve_model_file(
                 Path(root).expanduser().resolve(strict=True),
             )
             for root in folder_paths.get_folder_paths(candidate_role)
-            if Path(root).expanduser().exists()
+            if Path(root).expanduser().is_dir()
         ]
+        for lexical_root, resolved_root in roots:
+            candidate = lexical_root.joinpath(*posix_name.parts)
+            if _contains_symlink(candidate, lexical_root):
+                raise LoaderValidationError(
+                    "Symlinked model files and directories are forbidden",
+                )
+            resolved_candidate = candidate.resolve(strict=False)
+            if not _is_within(resolved_candidate, resolved_root):
+                raise LoaderValidationError(
+                    "Resolved model path escapes its declared folder role",
+                )
+            if not candidate.exists():
+                missing_candidates.append(resolved_candidate)
+            else:
+                candidate_present = True
         try:
             full_path = folder_paths.get_full_path(candidate_role, normalized_name)
         except (KeyError, OSError, TypeError, ValueError):
@@ -337,6 +373,7 @@ def resolve_model_file(
         )
         if matching_pair is None:
             last_error = "Model path escapes its declared folder role"
+            unsafe_resolution = True
             continue
         lexical_root, matching_root = matching_pair
         if _contains_symlink(lexical, lexical_root):
@@ -350,15 +387,16 @@ def resolve_model_file(
         if not resolved.is_file() or not os.access(resolved, os.R_OK):
             raise LoaderValidationError("Selected model must be a readable regular file")
 
-        extension = resolved.suffix.lower()
-        if not _extension_allowed(extension, reference_type):
-            if extension in LEGACY_MODEL_EXTENSIONS:
-                raise LoaderValidationError(
-                    "Legacy model formats are disabled by the administrator",
-                )
+        resolved_extension = resolved.suffix.lower()
+        if resolved_extension != extension and not _extension_allowed(
+            resolved_extension,
+            reference_type,
+        ):
             raise LoaderValidationError(
-                f"Unsupported {reference_type} extension '{extension or '<none>'}'",
+                f"Unsupported {reference_type} extension "
+                f"'{resolved_extension or '<none>'}'",
             )
+
         return ResolvedModelFile(
             role=candidate_role,
             relative_path=resolved.relative_to(matching_root).as_posix(),
@@ -366,6 +404,8 @@ def resolve_model_file(
             reference_type=reference_type,
         )
 
+    if missing_candidates and not candidate_present and not unsafe_resolution:
+        raise ModelFileNotFoundError(last_error, missing_candidates)
     raise LoaderValidationError(last_error)
 
 

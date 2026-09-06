@@ -301,12 +301,18 @@ class DownloadManagerModal {
 
     buildQueuePanel() {
         const actions = el('div', 'sml-dlm-filters');
+        this.selectAllQueueButton = button('Select All', () => this.setAllQueueJobsSelected(true), 'smart-model-loader-download-manager-queue-select-all');
+        this.deselectAllQueueButton = button('Deselect All', () => this.setAllQueueJobsSelected(false), 'smart-model-loader-download-manager-queue-deselect-all');
         this.startSelectedButton = button('Start Selected', () => this.selectedQueueAction('start'), 'smart-model-loader-download-manager-start-selected');
         this.removeSelectedButton = button('Remove Selected', () => this.selectedQueueAction('remove'), 'smart-model-loader-download-manager-remove-selected');
+        this.selectAllQueueButton.disabled = true;
+        this.deselectAllQueueButton.disabled = true;
         this.startSelectedButton.disabled = true;
         this.removeSelectedButton.disabled = true;
         actions.append(
             button('Refresh Queue', () => this.loadQueue(), 'smart-model-loader-download-manager-refresh-queue'),
+            this.selectAllQueueButton,
+            this.deselectAllQueueButton,
             this.startSelectedButton,
             this.removeSelectedButton,
             button('Export Bundle', () => this.exportBundle(), 'smart-model-loader-download-manager-export-bundle'),
@@ -703,10 +709,18 @@ class DownloadManagerModal {
 
     selectedJobIds() { return [...this.selectedJobs]; }
 
+    setAllQueueJobsSelected(selected) {
+        if (selected) this.selectedJobs = new Set(this.jobs.map(job => job.uuid));
+        else this.selectedJobs.clear();
+        this.renderQueue();
+    }
+
     updateQueueActions() {
         const selected = this.jobs.filter(job => this.selectedJobs.has(job.uuid));
         const startable = new Set(['ready', 'failed', 'cancelled']);
         const removable = new Set(['ready', 'completed', 'failed', 'cancelled']);
+        this.selectAllQueueButton.disabled = !this.jobs.length || selected.length === this.jobs.length;
+        this.deselectAllQueueButton.disabled = !selected.length;
         this.startSelectedButton.disabled = !selected.length || selected.some(job => !startable.has(job.state));
         this.removeSelectedButton.disabled = !selected.length || selected.some(
             job => !removable.has(job.state) || job.has_partial,
