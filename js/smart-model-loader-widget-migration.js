@@ -6,6 +6,28 @@ const AUDIO_VAE_OLD_INDEX = 65;
 const AUDIO_VAE_NEW_INDEX = 45;
 const AUDIO_VAE_SOURCES = new Set(['External', 'Baked']);
 const INTEGRITY_MODES = new Set(['off', 'sidecar', 'verify']);
+const PRE_MINIMAX_WIDGET_COUNTS = new Set([74, 77]);
+const SAMPLING_METHOD_INDEX = 24;
+const MINIMAX_SHIFT_INSERT_INDEX = SAMPLING_METHOD_INDEX + 1;
+const MINIMAX_SHIFT_DEFAULTS = [12.0, 3.0];
+const SAMPLING_METHODS = new Set([
+    'None',
+    'SD3',
+    'AuraFlow',
+    'Flux',
+    'Stable Cascade',
+    'LCM',
+    'ContinuousEDM',
+    'ContinuousV',
+    'LTXV',
+]);
+const SAMPLING_SUBTYPES = new Set([
+    'eps',
+    'v_prediction',
+    'edm',
+    'edm_playground_v2.5',
+    'cosmos_rflow',
+]);
 
 function hasLegacySamplerTail(values) {
     const fluxGuidance = values[LEGACY_DENOISE_WIDGET_INDEX];
@@ -37,6 +59,20 @@ function hasAudioVaeAfterSampler(values) {
         INTEGRITY_MODES.has(integrityMode);
 }
 
+function isFiniteNumber(value) {
+    return typeof value === 'number' && Number.isFinite(value);
+}
+
+function hasPreMiniMaxSamplingLayout(values) {
+    if (!PRE_MINIMAX_WIDGET_COUNTS.has(values.length)) return false;
+    return SAMPLING_METHODS.has(values[SAMPLING_METHOD_INDEX]) &&
+        SAMPLING_SUBTYPES.has(values[SAMPLING_METHOD_INDEX + 1]) &&
+        isFiniteNumber(values[SAMPLING_METHOD_INDEX + 2]) &&
+        isFiniteNumber(values[SAMPLING_METHOD_INDEX + 3]) &&
+        Number.isInteger(values[SAMPLING_METHOD_INDEX + 4]) &&
+        Number.isInteger(values[SAMPLING_METHOD_INDEX + 5]);
+}
+
 export function migrateLegacySmartLoaderWidgetValues(serializedNode) {
     const values = serializedNode?.widgets_values;
     if (!Array.isArray(values)) return serializedNode;
@@ -51,6 +87,11 @@ export function migrateLegacySmartLoaderWidgetValues(serializedNode) {
         if (migratedValues === values) migratedValues = values.slice();
         const audioVaeValues = migratedValues.splice(AUDIO_VAE_OLD_INDEX, 2);
         migratedValues.splice(AUDIO_VAE_NEW_INDEX, 0, ...audioVaeValues);
+    }
+
+    if (hasPreMiniMaxSamplingLayout(migratedValues)) {
+        if (migratedValues === values) migratedValues = values.slice();
+        migratedValues.splice(MINIMAX_SHIFT_INSERT_INDEX, 0, ...MINIMAX_SHIFT_DEFAULTS);
     }
 
     if (migratedValues === values) return serializedNode;

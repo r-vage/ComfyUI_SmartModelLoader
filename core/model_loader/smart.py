@@ -121,6 +121,8 @@ def execute_smart_request(**kwargs):
     sampling_method = kwargs.get("sampling_method", "None")
     sampling_subtype = kwargs.get("sampling_subtype", "eps")
     shift = kwargs.get("shift", 3.0)
+    shift_video = kwargs.get("shift_video", 12.0)
+    shift_audio = kwargs.get("shift_audio", 3.0)
     base_shift = kwargs.get("base_shift", 0.5)
     sampling_width = kwargs.get("sampling_width", 1024)
     sampling_height = kwargs.get("sampling_height", 1024)
@@ -668,6 +670,8 @@ def execute_smart_request(**kwargs):
             sampling_subtype=sampling_subtype,
             sigma_max=sigma_max,
             sigma_min=sigma_min,
+            shift_video=shift_video,
+            shift_audio=shift_audio,
         )
 
     # ============================================================

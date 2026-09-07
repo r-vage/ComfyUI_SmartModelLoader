@@ -152,6 +152,7 @@ _ENUMS = {
         "ContinuousEDM",
         "ContinuousV",
         "LTXV",
+        "MiniMax H3",
     },
     "sampling_subtype": {
         "eps",
@@ -175,6 +176,8 @@ _NUMERIC_BOUNDS = {
     "stop_at_clip_layer": (-24, -1),
     "blocks_to_swap": (0, 100),
     "shift": (0.0, 100.0),
+    "shift_video": (0.01, 100.0),
+    "shift_audio": (0.01, 100.0),
     "base_shift": (0.0, 100.0),
     "sampling_width": (16, 32768),
     "sampling_height": (16, 32768),

@@ -60,7 +60,7 @@ Downstream nodes automatically read what they need from the pipe. This results i
 - **Template System:** Save and load complete configurations instantly
 - **CLIP Ensemble:** Up to 4 CLIP modules with 27 architecture types
 - **LoRA Support:** Up to 3 LoRA slots with per-slot weight and on/off switches
-- **Model Sampling:** 8 sampling methods for different architectures
+- **Model Sampling:** 9 sampling methods for different architectures
 - **Block Swap:** GPU↔CPU block offloading for large models
 - **Single PIPE Output:** All loaded components in one connection
 
@@ -160,7 +160,7 @@ Templates only save settings for enabled feature chips:
 - Latent/resolution (if `latent` chip enabled)
 - Sampler settings except `denoise` (if `sampler` chip enabled)
 - LoRA slots (if `lora` chip enabled, all 3 slots saved even if off)
-- Model sampling method (if `model_sampling` chip enabled)
+- Model sampling method and its active architecture-specific parameters (if `model_sampling` chip enabled)
 
 ### Cross-Session Workflow
 
@@ -282,6 +282,9 @@ Enable the **model_sampling** chip to configure architecture-specific sampling m
 | ContinuousEDM | EDM-based models | subtype, sigma_max, sigma_min |
 | ContinuousV | V-prediction models | sigma_max, sigma_min |
 | LTXV | Lightricks video | shift, base_shift |
+| MiniMax H3 | MiniMax H3 audio-video models | shift_video, shift_audio |
+
+MiniMax H3 uses separate flow shifts for its packed video and audio streams. `shift_video` defaults to `12.0` and controls the sampler sigma schedule; `shift_audio` defaults to `3.0` and controls the corresponding audio schedule. Both accept values from `0.01` to `100.0`. The bundled MiniMaxH3 loader template leaves model sampling disabled, so enable the **model_sampling** chip and select **MiniMax H3** when this override is wanted.
 
 ### Flux Dimension Calculation
 

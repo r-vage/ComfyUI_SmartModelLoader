@@ -1,5 +1,27 @@
 # Changelog
 
+## 2026-09-07
+
+### Version: 1.0.12
+
+- **Feat**
+  - Add opt-in MiniMax H3 model sampling to Smart Model Loader with independent video/audio flow shifts, ComfyUI-compatible AV sampling, preserved noise scale and transformer options, and template round-trip support.
+- **Fix**
+  - Migrate pre-MiniMax positional Smart Loader workflows after normalizing older denoise and audio-VAE layouts, preserving every later widget value.
+- **Docs**
+  - Document MiniMax H3 sampling controls, defaults, ranges, and opt-in template behavior.
+
+**Changed files:**
+- `Readme/Smart_Loaders.md`
+- `core/model_loader/smart.py`
+- `core/model_loader/validation.py`
+- `core/model_loader_common.py`
+- `js/eclipse-smart-model-loader.js`
+- `js/smart-model-loader-model-sampling.js`
+- `js/smart-model-loader-widget-migration.js`
+- `py/RvLoader_SmartModelLoader.py`
+- `pyproject.toml`
+
 ## 2026-09-06
 
 ### Version: 1.0.11

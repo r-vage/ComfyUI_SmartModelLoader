@@ -34,6 +34,12 @@ import {
     resolveIntegrityUiState,
 } from './smart-model-loader-integrity-flow.js';
 import { migrateLegacySmartLoaderWidgetValues } from './smart-model-loader-widget-migration.js';
+import {
+    applyModelSamplingTemplate,
+    buildModelSamplingTemplate,
+    getModelSamplingVisibility,
+    resetModelSamplingFields,
+} from './smart-model-loader-model-sampling.js';
 const NODE_NAME = 'Smart Model Loader [Eclipse]';
 const SPECIAL_SEEDS = [-1, -2, -3];
 const FEATURE_OPTIONS = [
@@ -44,7 +50,7 @@ const FEATURE_OPTIONS = [
     { label: 'latent', tooltip: 'Toggle visibility of empty latent resolution presets, custom sizing, and batch size controls' },
     { label: 'sampler', tooltip: 'Toggle visibility of ComfyUI KSampler algorithms, schedulers, steps, CFG, denoise, and Flux guidance scales' },
     { label: 'lora', tooltip: 'Toggle visibility of LoRA slots (enable switches, files, and weights)' },
-    { label: 'model_sampling', tooltip: 'Toggle visibility of model-level scheduling curves (Universal shifts, Flux base shifts, target dimensions)' },
+    { label: 'model_sampling', tooltip: 'Toggle model-level scheduling curves, including MiniMax H3 video/audio shifts' },
     { label: 'block_swap', tooltip: 'Toggle visibility of block-swapping memory managers (offload transformer layers to CPU RAM to save VRAM)' },
     { label: 'memory_cleanup', tooltip: 'VRAM garbage collection — clear VRAM cache and run Python garbage collection before model loading' },
     { label: 'integrity', tooltip: 'Toggle visibility of file verification methods and CivitAI AIR automatic downloads' },
@@ -60,7 +66,7 @@ const FEATURE_WIDGETS = {
     latent: ['resolution', 'width', 'height', 'batch_size'],
     sampler: ['sampler_name', 'scheduler', 'steps', 'cfg', 'denoise', 'flux_guidance'],
     lora: ['lora_count', 'lora_switch_1', 'lora_name_1', 'lora_weight_1', 'lora_switch_2', 'lora_name_2', 'lora_weight_2', 'lora_switch_3', 'lora_name_3', 'lora_weight_3'],
-    model_sampling: ['sampling_method', 'sampling_subtype', 'shift', 'base_shift', 'sampling_width', 'sampling_height', 'original_timesteps', 'zsnr', 'sigma_max', 'sigma_min'],
+    model_sampling: ['sampling_method', 'shift_video', 'shift_audio', 'sampling_subtype', 'shift', 'base_shift', 'sampling_width', 'sampling_height', 'original_timesteps', 'zsnr', 'sigma_max', 'sigma_min'],
     block_swap: ['blocks_to_swap', 'offload_embeddings'],
     memory_cleanup: [],
     integrity: ['verify_file', 'expected_hashes', 'download_locators', 'download_target_role', 'air_or_hash'],
@@ -1039,16 +1045,7 @@ app.registerExtension({
                 sv('gguf_patch_on_device', false);
                 sv('blocks_to_swap', 10);
                 sv('offload_embeddings', false);
-                sv('sampling_method', 'None');
-                sv('sampling_subtype', 'eps');
-                sv('shift', 3);
-                sv('base_shift', 0.5);
-                sv('sampling_width', 1024);
-                sv('sampling_height', 1024);
-                sv('original_timesteps', 50);
-                sv('zsnr', false);
-                sv('sigma_max', 120);
-                sv('sigma_min', 0.002);
+                resetModelSamplingFields(sv);
                 sv('clip_source', 'Baked');
                 sv('clip_count', '1');
                 sv('clip_name1', 'None');
@@ -1161,10 +1158,11 @@ app.registerExtension({
                     featWidget.value = newFeatures;
                     if (data.model_type !== undefined) sv('model_type', data.model_type);
                     updateModelPrecisionOptions();
-                    const fields = ['weight_dtype', 'blocks_to_swap', 'offload_embeddings', 'sampling_method', 'sampling_subtype', 'shift', 'base_shift', 'sampling_width', 'sampling_height', 'original_timesteps', 'zsnr', 'sigma_max', 'sigma_min', 'data_type', 'cache_threshold', 'attention', 'i2f_mode', 'cpu_offload', 'num_blocks_on_gpu', 'use_pin_memory', 'gguf_dequant_dtype', 'gguf_patch_dtype', 'gguf_patch_on_device', 'clip_source', 'clip_count', 'clip_name1', 'clip_name2', 'clip_name3', 'clip_name4', 'clip_type', 'enable_clip_layer', 'stop_at_clip_layer', 'vae_source', 'vae_name', 'audio_vae_source', 'audio_vae_name', 'lora_count', 'ckpt_name', 'unet_name', 'nunchaku_name', 'qwen_name', 'zimage_name', 'gguf_name', 'expected_hashes', 'download_locators',];
+                    const fields = ['weight_dtype', 'blocks_to_swap', 'offload_embeddings', 'data_type', 'cache_threshold', 'attention', 'i2f_mode', 'cpu_offload', 'num_blocks_on_gpu', 'use_pin_memory', 'gguf_dequant_dtype', 'gguf_patch_dtype', 'gguf_patch_on_device', 'clip_source', 'clip_count', 'clip_name1', 'clip_name2', 'clip_name3', 'clip_name4', 'clip_type', 'enable_clip_layer', 'stop_at_clip_layer', 'vae_source', 'vae_name', 'audio_vae_source', 'audio_vae_name', 'lora_count', 'ckpt_name', 'unet_name', 'nunchaku_name', 'qwen_name', 'zimage_name', 'gguf_name', 'expected_hashes', 'download_locators',];
                     for (const f of fields) {
                         if (data[f] !== undefined) sv(f, data[f]);
                     }
+                    applyModelSamplingTemplate(data, sv);
                     if (data.model_precision !== undefined) {
                         sv('model_precision', data.model_precision);
                     }
@@ -1399,24 +1397,7 @@ app.registerExtension({
                     }
                 }
                 if (feats.includes('model_sampling')) {
-                    const sm = gv('sampling_method');
-                    cfg.sampling_method = sm;
-                    cfg.shift = gv('shift');
-                    if (sm === 'Flux' || sm === 'LTXV') cfg.base_shift = gv('base_shift');
-                    if (sm === 'Flux') {
-                        cfg.sampling_width = gv('sampling_width');
-                        cfg.sampling_height = gv('sampling_height');
-                    } else if (sm === 'LCM') {
-                        cfg.original_timesteps = gv('original_timesteps');
-                        cfg.zsnr = gv('zsnr');
-                    } else if (sm === 'ContinuousEDM') {
-                        cfg.sampling_subtype = gv('sampling_subtype');
-                        cfg.sigma_max = gv('sigma_max');
-                        cfg.sigma_min = gv('sigma_min');
-                    } else if (sm === 'ContinuousV') {
-                        cfg.sigma_max = gv('sigma_max');
-                        cfg.sigma_min = gv('sigma_min');
-                    }
+                    Object.assign(cfg, buildModelSamplingTemplate(gv));
                 }
 
                 const rawHashes = gv('expected_hashes');
@@ -1710,21 +1691,11 @@ app.registerExtension({
                 }
                 const hasMS = feats.has('model_sampling');
                 const sm = gv('sampling_method');
-                const isFlux = sm === 'Flux';
-                const isLTXV = sm === 'LTXV';
-                const isLCM = sm === 'LCM';
-                const isCEDM = sm === 'ContinuousEDM';
-                const isCont = isCEDM || sm === 'ContinuousV';
-                d('sampling_method', hasMS);
-                d('shift', hasMS && sm !== 'None' && !isLCM && !isCont);
-                d('base_shift', hasMS && (isFlux || isLTXV));
-                d('sampling_width', hasMS && isFlux && !hasLatent);
-                d('sampling_height', hasMS && isFlux && !hasLatent);
-                d('original_timesteps', hasMS && isLCM);
-                d('zsnr', hasMS && isLCM);
-                d('sampling_subtype', hasMS && isCEDM);
-                d('sigma_max', hasMS && isCont);
-                d('sigma_min', hasMS && isCont);
+                for (const [name, visible] of Object.entries(
+                    getModelSamplingVisibility(hasMS, sm, hasLatent),
+                )) {
+                    d(name, visible);
+                }
                 const hasBS = feats.has('block_swap');
                 const isNunchaku = isNFlux || isNQwen || isNZimg;
                 d('blocks_to_swap', hasBS && !isNunchaku);

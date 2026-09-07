@@ -438,6 +438,8 @@ def apply_model_sampling(
     sampling_subtype: str = "eps",
     sigma_max: float = 120.0,
     sigma_min: float = 0.002,
+    shift_video: float = 12.0,
+    shift_audio: float = 3.0,
 ):
     # Apply model sampling configuration based on method.
     if sampling_method == "None" or not sampling_method:
@@ -470,6 +472,12 @@ def apply_model_sampling(
         )
     if sampling_method == "LTXV":
         return _apply_ltxv_sampling(model, max_shift=shift, base_shift=base_shift)
+    if sampling_method == "MiniMax H3":
+        return _apply_minimax_h3_sampling(
+            model,
+            shift_video=shift_video,
+            shift_audio=shift_audio,
+        )
     log.warning(
         "Model Sampling", f"Unknown sampling method '{sampling_method}', skipping",
     )
@@ -710,6 +718,39 @@ def _apply_ltxv_sampling(model, max_shift: float = 2.05, base_shift: float = 0.9
     log.msg(
         "Model Sampling",
         f"Applied LTXV sampling: max_shift={max_shift}, base_shift={base_shift}, tokens={tokens}, calculated_shift={shift:.4f}",
+    )
+    return m
+
+
+def _apply_minimax_h3_sampling(
+    model,
+    shift_video: float = 12.0,
+    shift_audio: float = 3.0,
+):
+    m = model.clone()
+
+    class ModelSamplingAdvanced(  # type: ignore[misc,valid-type]
+        comfy.model_sampling.ModelSamplingAV,
+        comfy.model_sampling.CONST,
+    ):
+        pass
+
+    original = m.get_model_object("model_sampling")
+    model_sampling = ModelSamplingAdvanced(model.model.model_config)
+    model_sampling.set_parameters(shift=shift_video, audio_shift=shift_audio)
+    if hasattr(original, "noise_scale"):
+        model_sampling.set_noise_scale(original.noise_scale)
+    m.add_object_patch("model_sampling", model_sampling)
+
+    transformer_options = m.model_options["transformer_options"] = m.model_options.get(
+        "transformer_options",
+        {},
+    ).copy()
+    transformer_options["minimax_h3_sigma_shift_video"] = shift_video
+    transformer_options["minimax_h3_sigma_shift_audio"] = shift_audio
+    log.msg(
+        "Model Sampling",
+        f"Applied MiniMax H3 sampling: shift_video={shift_video}, shift_audio={shift_audio}",
     )
     return m
 
