@@ -51,6 +51,7 @@ from .model_loader.endpoints import (
     prepare_download_destination,
     promote_verified_replacement,
     read_json_object_request,
+    request_is_loopback,
     require_json_boolean,
     resolve_role_target,
 )
@@ -62,8 +63,12 @@ from .model_loader.validation import (
     LoaderValidationError,
     resolve_model_file,
 )
+from .self_update import get_update_status, perform_self_update, read_disk_version
 
 _MODEL_IO_SEMAPHORE = asyncio.Semaphore(2)
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+_OFFICIAL_REPOSITORY = "https://github.com/r-vage/ComfyUI_SmartModelLoader.git"
+_running_version = read_disk_version(_REPO_ROOT)
 
 # Detect ComfyUI native dynamic VRAM:
 # 0.18.x: ModelPatcher gained 'model_mmap_residency'
@@ -1204,6 +1209,57 @@ class StandaloneConfigEndpoints:
             )
 
 
+class SelfUpdateEndpoints:
+    """Local-only Smart Model Loader code update endpoints."""
+
+    def __init__(self):
+        self._register_endpoints()
+
+    def _register_endpoints(self):
+        @PromptServer.instance.routes.get("/smart-model-loader/update/status")
+        async def get_self_update_status(request):
+            return web.json_response(get_update_status(_REPO_ROOT, _running_version))
+
+        @PromptServer.instance.routes.post("/smart-model-loader/update")
+        async def run_self_update(request):
+            denial = global_mutation_denial(request)
+            if denial is not None:
+                return denial
+            if not request_is_loopback(request):
+                return web.json_response(
+                    {
+                        "success": False,
+                        "status": "forbidden",
+                        "error": "Self-update is limited to the local ComfyUI browser.",
+                    },
+                    status=403,
+                )
+            data = await read_json_object_request(request)
+            if data.get("confirmed") is not True:
+                return web.json_response(
+                    {
+                        "success": False,
+                        "status": "confirmation_required",
+                        "error": "Explicit update confirmation is required.",
+                    },
+                    status=400,
+                )
+            result = await asyncio.to_thread(
+                perform_self_update,
+                _REPO_ROOT,
+                _OFFICIAL_REPOSITORY,
+                _running_version,
+            )
+            response_status = {
+                "busy": 409,
+                "unsupported": 422,
+                "untracked_conflict": 409,
+                "dependency_failed": 500,
+                "failed": 500,
+            }.get(result.get("status"), 200)
+            return web.json_response(result, status=response_status)
+
+
 _STANDALONE_ENDPOINTS_REGISTERED = False
 
 
@@ -1213,5 +1269,6 @@ def initialize_endpoints() -> None:
         return
     StandaloneConfigEndpoints()
     LoaderEndpoints()
+    SelfUpdateEndpoints()
     _STANDALONE_ENDPOINTS_REGISTERED = True
     log.msg("", "Loader endpoints initialized")

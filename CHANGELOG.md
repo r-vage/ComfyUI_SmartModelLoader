@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-09-08
+
+### Version: 1.0.13
+
+- **Feat**
+  - Show the running Smart Model Loader version in its ComfyUI settings and provide a loopback-only, explicitly confirmed update action that replaces tracked files with official `main`, preserves untracked user data, installs requirements, and reports the required restart.
+
+**Changed files:**
+- `core/self_update.py`
+- `core/server_endpoints.py`
+- `js/smart-model-loader-self-update.js`
+- `pyproject.toml`
+
 ## 2026-09-07
 
 ### Version: 1.0.12
