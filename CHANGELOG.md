@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-09-09
+
+### Version: 1.0.14
+
+- **Fix**
+  - Hide the Flux guidance control for Flux2 CLIP selections and omit the unused value from newly saved Flux2 templates while retaining Flux 1 and Nunchaku Flux guidance.
+
+**Changed files:**
+- `js/eclipse-smart-model-loader.js`
+- `js/smart-model-loader-sampler-visibility.js`
+- `pyproject.toml`
+
 ## 2026-09-08
 
 ### Version: 1.0.13

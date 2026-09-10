@@ -40,6 +40,7 @@ import {
     getModelSamplingVisibility,
     resetModelSamplingFields,
 } from './smart-model-loader-model-sampling.js';
+import { supportsFluxGuidance } from './smart-model-loader-sampler-visibility.js';
 const NODE_NAME = 'Smart Model Loader [Eclipse]';
 const SPECIAL_SEEDS = [-1, -2, -3];
 const FEATURE_OPTIONS = [
@@ -1384,7 +1385,7 @@ app.registerExtension({
                     cfg.steps = gv('steps');
                     cfg.cfg = gv('cfg');
                     const ct = gv('clip_type');
-                    if (mt === 'Nunchaku Flux' || (['flux', 'flux2'].includes(ct) && ['UNet Model', 'GGUF Model'].includes(mt))) {
+                    if (supportsFluxGuidance(mt, ct)) {
                         cfg.flux_guidance = gv('flux_guidance');
                     }
                 }
@@ -1672,13 +1673,13 @@ app.registerExtension({
                 d('batch_size', hasLatent);
                 const hasSampler = feats.has('sampler');
                 const clipType = gv('clip_type');
-                const isFluxLike = isNFlux || (['flux', 'flux2'].includes(clipType) && (isUnet || isGGUF));
+                const hasFluxGuidance = supportsFluxGuidance(mt, clipType);
                 d('sampler_name', hasSampler);
                 d('scheduler', hasSampler);
                 d('steps', hasSampler);
                 d('cfg', hasSampler);
                 d('denoise', hasSampler);
-                d('flux_guidance', hasSampler && isFluxLike);
+                d('flux_guidance', hasSampler && hasFluxGuidance);
                 const hasLora = feats.has('lora');
                 const loraCount = parseInt(gv('lora_count')) || 3;
                 d('lora_count', hasLora);
