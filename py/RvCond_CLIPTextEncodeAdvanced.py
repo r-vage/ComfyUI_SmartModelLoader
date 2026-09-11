@@ -133,7 +133,14 @@ class RvCond_CLIPTextEncodeAdvanced(io.ComfyNode):
                         "custom",
                     ],
                     default="none",
-                    tooltip="Select layer-gain rebalancing profile for Krea2 multi-layer tap models. 'none' disables rebalancing; 'balanced' boosts late taps (up to 5x); 'detail' dampens early and aggressively boosts late taps (up to 6x); 'subtle' gently boosts late taps (up to 2x); 'uniform' applies a flat 1.0; 'custom' uses 'per_layer_weights'.",
+                    tooltip=(
+                        "Select a layer-gain rebalancing profile for Krea2 "
+                        "multi-layer tap models. 'none' disables rebalancing. "
+                        "'balanced' boosts late taps up to 5x. 'detail' dampens "
+                        "early taps and aggressively boosts late taps up to 6x. "
+                        "'subtle' gently boosts late taps up to 2x. 'uniform' "
+                        "applies a flat 1.0. 'custom' uses 'per_layer_weights'."
+                    ),
                 ),
                 io.String.Input(
                     "per_layer_weights",

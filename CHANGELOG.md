@@ -1,5 +1,22 @@
 # Changelog
 
+## 2026-09-11
+
+### Version: 1.0.15
+
+- **Fix**
+  - Rewrite the Krea2 layer-rebalancing tooltip as readable sentences so security scanning no longer mistakes its punctuation density for minified Python.
+
+- **Chore**
+  - Remove the built-in software updater and its server endpoints, leaving Smart Model Loader upgrades to ComfyUI Manager or explicit repository/package-management workflows.
+
+**Changed files:**
+- `core/self_update.py`
+- `core/server_endpoints.py`
+- `js/smart-model-loader-self-update.js`
+- `py/RvCond_CLIPTextEncodeAdvanced.py`
+- `pyproject.toml`
+
 ## 2026-09-09
 
 ### Version: 1.0.14
