@@ -130,6 +130,9 @@ Select `model_type` to choose which format to load:
 - GGUF format quantized diffusion models
 - **Location:** `ComfyUI/models/diffusion_models/`
 - Uses the bundled ComfyUI adapter and the `gguf` Python package declared by Smart Model Loader
+- Supports existing MiniMax H3 diffusion GGUF files when the installed ComfyUI release includes native MiniMax H3 support; pair the diffusion model with the appropriate external MiniMax H3 text encoder, video VAE, and audio VAE
+- For MiniMax H3 image-to-video or reference-to-video conditioning, place the matching `*-mmproj-*.gguf` beside the GGUF text encoder; the shared filename prefix is matched and its Qwen3-VL vision tower is loaded automatically
+- Loads existing GGUF files only; GGUF conversion is not included
 - Settings: gguf_dequant_dtype, gguf_patch_dtype, gguf_patch_on_device
 
 **Note:** Without the optional Nunchaku or GGUF Python packages installed, the

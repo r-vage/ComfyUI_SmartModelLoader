@@ -4,9 +4,8 @@ import os
 import re
 import warnings
 
-import torch
-
 import gguf
+import torch
 
 from .dequant import dequantize_tensor, is_quantized
 from .ops import GGMLTensor
@@ -24,6 +23,7 @@ IMG_ARCH_LIST = {
     "wan",
     "lumina2",
     "qwen_image",
+    "minimax_h3",
 }
 TXT_ARCH_LIST = {"t5", "t5encoder", "llama", "qwen2vl", "qwen3", "qwen3vl", "gemma3"}
 VIS_TYPE_LIST = {"clip-vision", "mmproj"}
@@ -266,6 +266,30 @@ CLIP_VISION_SD_MAP = {
     "ln2.": "norm2.",
 }
 
+CLIP_VISION_QWEN3_MAP = {
+    "v.blk": "model.visual.blocks",
+    ".fc": ".linear_fc",
+    "ck.8.": "st.0.",
+    "ck.16.": "st.1.",
+    "ck.24.": "st.2.",
+    "ck.5.": "st.0.",
+    "ck.11.": "st.1.",
+    "ck.17.": "st.2.",
+    "attn_out": "attn.proj",
+    "ln1": "norm1",
+    "ln2": "norm2",
+    "attn_qkv": "attn.qkv",
+    "ffn_up": "mlp.linear_fc1",
+    "ffn_down": "mlp.linear_fc2",
+    "mm.0": "model.visual.merger.linear_fc1",
+    "mm.2": "model.visual.merger.linear_fc2",
+    "v.post_ln": "model.visual.merger.norm",
+    "v.patch_embd": "model.visual.patch_embed.proj",
+    "v.position_embd.weight": "visual.pos_embed.weight",
+    "v.deepstack.": "model.visual.deepstack_merger_list.",
+    "v.deepstast.": "model.visual.deepstack_merger_list.",
+}
+
 
 def sd_map_replace(raw_sd, key_map):
     sd = {}
@@ -326,7 +350,7 @@ def strip_quant_suffix(name):
 
 def gguf_mmproj_loader(path):
     # Reverse version of Qwen2VLVisionModel.modify_tensors
-    logging.info("Attenpting to find mmproj file for text encoder...")
+    logging.info("Attempting to find mmproj file for text encoder...")
 
     # get name to match w/o quant suffix
     tenc_fname = os.path.basename(path)
@@ -347,7 +371,7 @@ def gguf_mmproj_loader(path):
 
     if len(target) == 0:
         logging.error(
-            f"Error: Can't find mmproj file for '{tenc_fname}' (matching:'{tenc}')! Qwen-Image-Edit will be broken!",
+            f"Error: Can't find mmproj file for '{tenc_fname}' (matching:'{tenc}')! Vision conditioning will be unavailable!",
         )
         return {}
     if len(target) > 1:
@@ -364,6 +388,9 @@ def gguf_mmproj_loader(path):
         w1 = dequantize_tensor(vsd.pop("v.patch_embd.weight"), dtype=torch.float32)
         w2 = dequantize_tensor(vsd.pop("v.patch_embd.weight.1"), dtype=torch.float32)
         vsd["v.patch_embd.weight"] = torch.stack([w1, w2], dim=2)
+
+    if any("deepstack" in key or "deepstast" in key for key in vsd):
+        return sd_map_replace(vsd, CLIP_VISION_QWEN3_MAP)
 
     # run main replacement
     vsd = sd_map_replace(vsd, CLIP_VISION_SD_MAP)
@@ -551,6 +578,33 @@ def gguf_gemma3_tokenizer_loader(path):
     return torch.ByteTensor(list(spm.SerializeToString()))
 
 
+def inject_qwen3vl_detection_markers(sd):
+    """Add visual sentinels when a llama.cpp Qwen3-VL GGUF excludes its vision tower."""
+    ln_key = "model.layers.0.input_layernorm.weight"
+    lm_hidden = int(sd[ln_key].shape[0]) if ln_key in sd else 2560
+    vis_hidden = 1024 if lm_hidden == 2560 else 1152
+    merge_dim = vis_hidden * 4  # spatial_merge_size=2
+
+    if lm_hidden == 5120:
+        # MiniMax H3 uses the truncated Qwen3-VL-32B encoder. Its detector
+        # deliberately checks this unprefixed visual key plus layer 49.
+        marker_key = "visual.deepstack_merger_list.0.norm.weight"
+    else:
+        marker_key = "model.visual.deepstack_merger_list.0.norm.weight"
+
+    sd[marker_key] = torch.zeros(merge_dim)
+    if lm_hidden != 5120:
+        sd["model.visual.merger.linear_fc2.weight"] = torch.zeros(
+            lm_hidden, merge_dim,
+        )
+    logging.info(
+        "qwen3vl GGUF: injected visual marker tensor "
+        "(lm_hidden=%d, merge_dim=%d)",
+        lm_hidden,
+        merge_dim,
+    )
+
+
 def gguf_clip_loader(path):
     sd, extra = gguf_sd_loader(path, is_text_model=True)
     arch = extra.get("arch_str", None)
@@ -587,6 +641,25 @@ def gguf_clip_loader(path):
         if arch == "qwen2vl":
             vsd = gguf_mmproj_loader(path)
             sd.update(vsd)
+        if arch == "qwen3vl":
+            vsd = gguf_mmproj_loader(path)
+            if vsd and "model.layers.49.self_attn.q_proj.weight" in sd:
+                # MiniMax H3 uses an unprefixed visual namespace, unlike the
+                # standalone Qwen3-VL variants.
+                vsd = {
+                    key.replace("model.visual.", "visual.", 1)
+                    if key.startswith("model.visual.")
+                    else key: value
+                    for key, value in vsd.items()
+                }
+            sd.update(vsd)
+            if not (
+                "model.visual.deepstack_merger_list.0.norm.weight" in sd
+                or "visual.deepstack_merger_list.0.norm.weight" in sd
+            ):
+                # Standard llama.cpp Qwen3-VL GGUFs omit the visual tower.
+                # Keep text-only model detection correct without an mmproj.
+                inject_qwen3vl_detection_markers(sd)
     else:
         pass
     return sd

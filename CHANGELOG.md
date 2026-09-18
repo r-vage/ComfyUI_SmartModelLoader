@@ -1,5 +1,22 @@
 # Changelog
 
+## 2026-09-18
+
+### Version: 1.0.16
+
+- **Fix**
+  - Pass existing MiniMax H3 diffusion GGUF files through the vendored architecture gate to ComfyUI's native model detector while preserving rejection of unsupported image and text-model architectures.
+  - Discover and remap matching Qwen3-VL mmproj sidecars for GGUF text encoders so MiniMax H3 reaches ComfyUI's native encoder instead of falling back to the Mistral3 tokenizer path.
+
+- **Docs**
+  - Document the ComfyUI, external text-encoder, matching mmproj, and VAE requirements for MiniMax H3 GGUF loading and distinguish deterministic loader coverage from real-weight qualification.
+
+**Changed files:**
+- `Readme/Model_Loader_Security.md`
+- `Readme/Smart_Loaders.md`
+- `extern/gguf/loader.py`
+- `pyproject.toml`
+
 ## 2026-09-11
 
 ### Version: 1.0.15

@@ -114,7 +114,7 @@ required.
 | --- | --- | --- |
 | Standard checkpoint / UNet | Yes | Not run |
 | Nunchaku Flux / Qwen / ZImage | Validation and vendored adapter paths, including CUDA architecture/quantization checks for Flux and ZImage | Flux and Qwen real loads passed; INT4 ZImage load plus a two-step 512×512 sample/decode passed on an RTX 4070 Ti SUPER, with ComfyUI's tiled VAE fallback recovering from regular-decode VRAM pressure |
-| GGUF | Validation and vendored adapter paths | Not run with real weights; requires the `gguf` Python package declared by Smart Model Loader |
+| GGUF | Validation and vendored adapter paths, including deterministic MiniMax H3 architecture acceptance, Qwen3-VL mmproj matching/remapping, and unsupported image/text-role rejection | The reported MiniMax H3 diffusion GGUF loaded successfully and its local encoder/mmproj metadata was inspected; a complete post-fix load and sample remain to be rerun. MiniMax H3 requires a ComfyUI release with native support, the appropriate external text encoder and VAEs, and the `gguf` Python package declared by Smart Model Loader |
 | External CLIP / VAE / audio VAE | Resolution and loader paths | Not run |
 | LoRA / sampling / BlockSwap | Shared adapter and policy paths | Not run with production weights |
 | CivitAI network download | Controlled HTTP/identity/resume/digest tests | No live CivitAI download run |
