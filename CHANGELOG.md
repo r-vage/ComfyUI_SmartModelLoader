@@ -1,5 +1,24 @@
 # Changelog
 
+## 2026-09-19
+
+### Version: 1.0.17
+
+- **Fix**
+  - Cancel deferred combo-chip outside-click registration and remove installed document listeners whenever a popup closes or its node is removed.
+
+- **Perf**
+  - Pre-hide Advanced CLIP's conditional layer weights, skip its redundant workflow-load pass, and initialize fresh-node visibility and sizing after graph ID assignment without a fixed timer.
+
+- **Refactor**
+  - Namespace opt-in frontend diagnostics under Smart Model Loader-specific storage, console, and window names so standalone packs cannot overwrite one another's performance controls.
+
+**Changed files:**
+- `js/eclipse-clip-text-encode-advanced.js`
+- `js/eclipse-combo-chip.js`
+- `js/eclipse-widget-performance-utils.js`
+- `pyproject.toml`
+
 ## 2026-09-18
 
 ### Version: 1.0.16

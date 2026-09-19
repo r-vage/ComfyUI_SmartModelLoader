@@ -8,25 +8,21 @@ if (!document.getElementById('eclipse-tooltip-fix')) {
 // ---------------------------------------------------------------------------
 // Performance logger (opt-in — OFF by default).
 //
-// Enable via localStorage (independent of Eclipse log_level):
-//     localStorage.eclipse_perf_log = '1'        // enable counters
-//     localStorage.eclipse_perf_log = 'verbose'  // enable + per-call console.log
+// Enable via localStorage (independent of the pack log level):
+//     localStorage.smart_model_loader_perf_log = '1'        // enable counters
+//     localStorage.smart_model_loader_perf_log = 'verbose'  // enable + per-call console.log
 // Then reload the page.  Remove the key (or set to '0') to disable.
 //
 // Usage once enabled:
-//     window.eclipsePerfDump()      // console.table: fn | calls | duringLoad | firstSeenMs | topCallers
-//     window.eclipsePerfReset()     // clear counters
+//     window.smartModelLoaderPerfDump()   // console.table: fn | calls | duringLoad | firstSeenMs | topCallers
+//     window.smartModelLoaderPerfReset()  // clear counters
 // ---------------------------------------------------------------------------
 let _perfFlag = '';
 try {
     if (typeof localStorage !== 'undefined') {
-        _perfFlag = localStorage.getItem('eclipse_perf_log') || '';
+        _perfFlag = localStorage.getItem('smart_model_loader_perf_log') || '';
     }
 } catch {}
-// Legacy fallback: window.__eclipse_perf_log = 'verbose' still honored
-if (!_perfFlag && typeof window !== 'undefined' && window.__eclipse_perf_log) {
-    _perfFlag = String(window.__eclipse_perf_log);
-}
 let _perfEnabled = _perfFlag === '1' || _perfFlag === 'verbose' || _perfFlag === 'true';
 let _perfVerbose = _perfFlag === 'verbose';
 // callCounts: fnName -> count
@@ -88,12 +84,12 @@ function _perfTrack(fnName) {
     m.set(caller, (m.get(caller) || 0) + 1);
     if (_perfVerbose) {
         // eslint-disable-next-line no-console
-        console.log(`[eclipse-perf] ${fnName} ← ${caller}`);
+        console.log(`[smart-model-loader-perf] ${fnName} ← ${caller}`);
     }
 }
 
 if (typeof window !== 'undefined' && _perfEnabled) {
-    window.eclipsePerfDump = function () {
+    window.smartModelLoaderPerfDump = function () {
         const rows = [];
         for (const [fn, count] of _perfCounts) {
             const duringLoad = _perfDuringLoad.get(fn) || 0;
@@ -117,16 +113,16 @@ if (typeof window !== 'undefined' && _perfEnabled) {
         console.table(rows);
         return rows;
     };
-    window.eclipsePerfReset = function () {
+    window.smartModelLoaderPerfReset = function () {
         _perfCounts.clear();
         _perfCallers.clear();
         _perfFirstSeen.clear();
         _perfDuringLoad.clear();
         // eslint-disable-next-line no-console
-        console.log('[eclipse-perf] counters reset');
+        console.log('[smart-model-loader-perf] counters reset');
     };
     // eslint-disable-next-line no-console
-    console.log(`[eclipse-perf] logging ${_perfVerbose ? 'VERBOSE' : 'ON'} (opt-in via localStorage.eclipse_perf_log).  Call window.eclipsePerfDump() for summary.`);
+    console.log(`[smart-model-loader-perf] logging ${_perfVerbose ? 'VERBOSE' : 'ON'} (opt-in via localStorage.smart_model_loader_perf_log).  Call window.smartModelLoaderPerfDump() for summary.`);
 }
 
 export function debounce(fn, delay) {
