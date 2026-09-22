@@ -1,5 +1,24 @@
 # Changelog
 
+## 2026-09-22
+
+### Version: 1.0.18
+
+- **Feat**
+  - Add Text Encode Qwen Image 2.1 with connected positive/negative prompts, native dynamic image inputs from two visible sockets up to sixteen, and upstream conditioning, resolution, and latent behavior.
+  - Support Qwen Image 2.1 Diffusers VAEs in the shared external loader through in-memory key and shape normalization, complete compatibility validation, and preserved tensor values, dtype, and metadata.
+
+- **Docs**
+  - Document Qwen3-VL-8B selection with the existing qwen_image CLIP type, native and Diffusers Qwen Image 2.1 VAEs, dynamic reference inputs, and resolution behavior.
+
+**Changed files:**
+- `README.md`
+- `Readme/Smart_Loaders.md`
+- `core/model_loader/qwen_vae.py`
+- `core/model_loader_common.py`
+- `py/RvCond_TextEncodeQwenImage21.py`
+- `pyproject.toml`
+
 ## 2026-09-19
 
 ### Version: 1.0.17

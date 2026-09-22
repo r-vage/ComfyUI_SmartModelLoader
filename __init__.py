@@ -39,6 +39,7 @@ class SmartModelLoaderExtension(ComfyExtension):
         from .py.RvCond_CLIPTextEncode import RvCond_CLIPTextEncode
         from .py.RvCond_CLIPTextEncodeAdvanced import RvCond_CLIPTextEncodeAdvanced
         from .py.RvCond_ConditioningZeroOut import RvCond_ConditioningZeroOut
+        from .py.RvCond_TextEncodeQwenImage21 import RvCond_TextEncodeQwenImage21
         from .py.RvLoader_ClipLoader import RvLoader_ClipLoader
         from .py.RvLoader_ModelLoader import RvLoader_ModelLoader
         from .py.RvLoader_ModelLoaderPipe import RvLoader_ModelLoaderPipe
@@ -71,6 +72,7 @@ class SmartModelLoaderExtension(ComfyExtension):
             RvCond_CLIPTextEncode,
             RvCond_CLIPTextEncodeAdvanced,
             RvCond_ConditioningZeroOut,
+            RvCond_TextEncodeQwenImage21,
             RvPipe_IO_CheckpointLoader,
             RvSampler_KSamplerPipe,
             RvTools_LoraStack,

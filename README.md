@@ -4,7 +4,7 @@ A complete, pipe-first diffusion workflow for ComfyUI: load models, build text
 conditioning, sample, decode, and acquire verified model files without turning
 your canvas into a wall of connections.
 
-Smart Model Loader includes fifteen Nodes 2.0-ready nodes, including the
+Smart Model Loader includes sixteen Nodes 2.0-ready nodes, including the
 workflow-compatible LoRA Stack and Nunchaku PuLID tools. ComfyUI Eclipse is
 optional.
 
@@ -131,6 +131,7 @@ choose their registered model destinations, and monitor the persistent queue.
 | Loader | `VAE Loader Video+Audio [Eclipse]` | Load separate video and audio VAEs |
 | Conditioning | `CLIP Text Encode [Eclipse]` | Build scheduled conditioning from connected text |
 | Conditioning | `CLIP Text Encode (Advanced) [Eclipse]` | Apply multipliers and Krea2 layer rebalancing |
+| Conditioning | `Text Encode Qwen Image 2.1 [Smart Model Loader]` | Encode Qwen Image 2.1 prompts and up to sixteen image references |
 | Conditioning | `Conditioning Zero Out [Eclipse]` | Clear and optionally truncate conditioning |
 | Pipe | `IO Checkpoint Loader [Eclipse]` | Merge, override, and expose checkpoint PIPE values |
 | Sampler | `Eclipse KSampler (Pipe) [Eclipse]` | Sample, VAE-decode, preview, and update the PIPE |
@@ -140,7 +141,7 @@ choose their registered model destinations, and monitor the persistent queue.
 | Tools | `Nunchaku PuLID Apply [Eclipse]` | Apply PuLID identity guidance to a Nunchaku Flux model |
 
 The `[Eclipse]` suffixes are compatibility identifiers. Smart Model Loader owns
-these fifteen implementations and does not require Eclipse at runtime. The two
+all sixteen implementations and does not require Eclipse at runtime. The two
 PuLID nodes are available when the compatible `nunchaku` Python package and its
 PuLID dependencies are installed.
 

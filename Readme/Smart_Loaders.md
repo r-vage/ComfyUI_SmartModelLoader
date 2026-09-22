@@ -10,6 +10,7 @@ The unified model loader in ComfyUI Smart Model Loader — compatible with workf
 - [CLIP Configuration](#clip-configuration)
 - [VAE Configuration](#vae-configuration)
 - [Audio VAE Configuration](#audio-vae-configuration)
+- [Qwen Image 2.1](#qwen-image-21)
 - [Latent Configuration](#latent-configuration)
 - [Sampler Settings](#sampler-settings)
 - [LoRA Configuration](#lora-configuration)
@@ -220,6 +221,32 @@ Visible when the `audio_vae` chip is enabled.
 
 - **Baked:** Extracts prefixed LTX audio VAE / vocoder weights directly from an all-in-one LTX2/LTXV model file. The loader stops with an error if the requested baked component is absent.
 - **External:** Loads a separate audio VAE from `ComfyUI/models/vae/` through ComfyUI's general VAE loader. This supports formats ComfyUI recognizes, including MiniMax H3 and standalone LTX audio VAEs, and stops with an error if the selected file cannot load.
+
+---
+
+## Qwen Image 2.1
+
+Use a ComfyUI version that provides `TextEncodeQwenImage21` and native Qwen Image 2.1 VAE support. The conditioning node still registers on older installations, but execution reports missing upstream encoder support.
+
+### Model selection
+
+- Load the Qwen Image 2.1 diffusion model using the appropriate existing loader model type.
+- Select **External** CLIP and the existing **`qwen_image`** type with compatible **Qwen3-VL-8B** text-encoder weights. ComfyUI selects its Qwen Image 2.1 encoder from the weight architecture; there is no separate `qwen_image_2.1` CLIP type. Older Qwen Image encoders are not interchangeable with this encoder.
+- Select **External** VAE and a Qwen Image 2.1 RGBA VAE. Native `qwen_image_2.1_vae_bf16.safetensors` and Diffusers `qwen21HDRVAE_diffusersFormat_fp16.safetensors` are supported by the shared external VAE loader, including the standalone VAE Loader.
+
+The Diffusers format is detected from tensor keys and shapes, independently of its filename. The loader maps its blocks, attention, normalization, resampling, and quantization weights to ComfyUI's native architecture, adding singleton temporal dimensions where needed. It validates every converted key and shape and rejects malformed recognized files. Conversion preserves tensor values, dtype, and file metadata in memory; native files pass through unchanged and neither file is rewritten. ComfyUI retains control of inference device and compute dtype. This architecture uses 64 latent channels, 16× spatial compression, and four output channels; RGB input receives opaque alpha.
+
+### Text Encode Qwen Image 2.1
+
+Find **Text Encode Qwen Image 2.1** under **Smart Model Loader → Conditioning**. Its serialized ID is `Text Encode Qwen Image 2.1 [Smart Model Loader]`.
+
+Connect `clip`, `vae`, `positive`, and `negative`, in that order. Both prompts are STRING sockets, with no prompt widgets. Connect a string-producing node for each prompt; an empty string is valid.
+
+`image_1` and `image_2` are always visible and optional. Connecting the last visible image socket adds another, up to `image_16`; disconnecting references removes surplus empty trailing sockets. This uses ComfyUI's native V3 autogrow in classic and Nodes 2.0 and does not require Eclipse. References follow numeric socket order, using the first image of each input batch. Upstream encoding retains RGBA for the VAE and composites alpha over white for the vision encoder.
+
+**Resolution** retains upstream behavior: the default is 1024, with a 0–4096 range and step 32. Positive values resize each reference to approximately `resolution × resolution` pixels while preserving its aspect ratio and rounding dimensions to multiples of 32. Zero keeps each reference's own dimensions, rounded to multiples of 32, with a minimum of 32 per axis.
+
+The outputs are **positive**, **negative**, and **latent**, forwarded directly from upstream. The empty latent follows the first reference's resized dimensions. Without references, it is square at the selected resolution; resolution zero falls back to 1024. For editing, feed this latent to the sampler so its dimensions match the references.
 
 ---
 

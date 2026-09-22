@@ -31,6 +31,7 @@ from .logger import log
 from .model_loader import pipes as _pipes
 from .model_loader.blockswap import apply_blockswap as _apply_blockswap
 from .model_loader.integrity import read_safetensors_header
+from .model_loader.qwen_vae import normalize_qwen_vae
 from .model_loader.validation import resolve_model_file, validate_loader_request
 from .nunchaku_wrapper import (
     NUNCHAKU_AVAILABLE,
@@ -1552,11 +1553,8 @@ def load_model(log_prefix: str, **kwargs) -> tuple[Any, Any, Any, Any, str, str]
 
 
 # ── External VAE loader ─────────────────────────────────────────────
-# Mirrors upstream comfy_extras VAELoader.load_vae() exactly: reads the
-# safetensors metadata and forwards it to comfy.sd.VAE (some VAEs read
-# "config" from metadata to set scale/shift/architecture, see
-# comfy/sd.py VAE.__init__). Any architecture-specific handling lives in
-# upstream comfy.sd.VAE — no Eclipse-side branches.
+# Preserve safetensors metadata for upstream architecture/scale selection.
+# Normalize recognized Qwen Image 2.1 Diffusers weights before construction.
 
 
 def load_custom_vae(
@@ -1569,7 +1567,7 @@ def load_custom_vae(
         resolve_model_file("vae", vae_name, reference_type="vae").path,
     )
     sd, metadata = comfy.utils.load_torch_file(vae_path, return_metadata=True)
-    vae = comfy.sd.VAE(sd=sd, metadata=metadata)
+    vae = comfy.sd.VAE(sd=normalize_qwen_vae(sd), metadata=metadata)
     vae.throw_exception_if_invalid()
     if disable_offload is not None:
         vae.disable_offload = disable_offload
