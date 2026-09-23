@@ -11,6 +11,7 @@ The unified model loader in ComfyUI Smart Model Loader — compatible with workf
 - [VAE Configuration](#vae-configuration)
 - [Audio VAE Configuration](#audio-vae-configuration)
 - [Qwen Image 2.1](#qwen-image-21)
+- [MiniMax Music 3](#minimax-music-3)
 - [Latent Configuration](#latent-configuration)
 - [Sampler Settings](#sampler-settings)
 - [LoRA Configuration](#lora-configuration)
@@ -247,6 +248,43 @@ Connect `clip`, `vae`, `positive`, and `negative`, in that order. Both prompts a
 **Resolution** retains upstream behavior: the default is 1024, with a 0–4096 range and step 32. Positive values resize each reference to approximately `resolution × resolution` pixels while preserving its aspect ratio and rounding dimensions to multiples of 32. Zero keeps each reference's own dimensions, rounded to multiples of 32, with a minimum of 32 per axis.
 
 The outputs are **positive**, **negative**, and **latent**, forwarded directly from upstream. The empty latent follows the first reference's resized dimensions. Without references, it is square at the selected resolution; resolution zero falls back to 1024. For editing, feed this latent to the sampler so its dimensions match the references.
+
+---
+
+## MiniMax Music 3
+
+Find **Text Encode MiniMax Music 3** under **Smart Model Loader → Conditioning**.
+Its serialized ID is `Text Encode MiniMax Music 3 [Smart Model Loader]`.
+
+Connect a MiniMax Music 3 `clip` and one multiline `song_json` STRING. The JSON
+must contain exactly two strings, `caption` and `lyrics`. Caption must start
+with `Global Metadata:`, then have `Vocal Details:` and `Arrangement:` on their
+own lines, in that order. Lyrics contains sung text and section tags; an empty
+string supports instrumental pieces. An enclosing JSON code fence is accepted.
+Dynamic prompt expansion is disabled to preserve JSON and literal lyric text.
+
+SmartLLM's **MiniMax Music 3** task can produce this JSON from a concept or
+existing lyrics, including a **Song Lyrics → MiniMax Music 3** task chain. Connect
+its STRING result (output slot 1) to `song_json`. Manually authored JSON also works;
+SmartLLM is not a runtime dependency.
+
+The wrapper validates the JSON before calling ComfyUI's native
+`MiniMaxMusic3TextEncode`. It forwards `seed`, `max_duration`, `cfg_scale` and
+`top_k` unchanged and returns native **CONDITIONING**, then **seconds**. Native
+code derives seconds from the generated sequence. Defaults are seed 0,
+max_duration 120 seconds, cfg_scale 1.5 and top_k 50. Missing native support
+reports an actionable ComfyUI update error when executing this node.
+
+When replacing node **47** in the inspected `audio_minimax_music_3` workflow,
+work in a copy: connect node 48 CLIP to `clip`, node 57 shared seed to `seed`,
+and SmartLLM's STRING result to `song_json`. Keep output 0 connected to node 50
+input 0 and node 52 input 1; keep output 1 connected to node 51 input 0.
+Preserve **seed 222**, **fixed**, **max_duration 60**, **cfg_scale 1.7**, and
+**top_k 50**. Reconnect by name because replacing two text inputs with one shifts
+the native input indices. The original workflow remains untouched.
+
+The caption/lyrics separation follows the
+[official MiniMax Music 3 guidance](https://github.com/MiniMax-AI/MiniMax-Music3).
 
 ---
 

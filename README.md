@@ -132,6 +132,7 @@ choose their registered model destinations, and monitor the persistent queue.
 | Conditioning | `CLIP Text Encode [Eclipse]` | Build scheduled conditioning from connected text |
 | Conditioning | `CLIP Text Encode (Advanced) [Eclipse]` | Apply multipliers and Krea2 layer rebalancing |
 | Conditioning | `Text Encode Qwen Image 2.1 [Smart Model Loader]` | Encode Qwen Image 2.1 prompts and up to sixteen image references |
+| Conditioning | `Text Encode MiniMax Music 3 [Smart Model Loader]` | Encode caption/lyrics JSON with native Music 3 controls and duration |
 | Conditioning | `Conditioning Zero Out [Eclipse]` | Clear and optionally truncate conditioning |
 | Pipe | `IO Checkpoint Loader [Eclipse]` | Merge, override, and expose checkpoint PIPE values |
 | Sampler | `Eclipse KSampler (Pipe) [Eclipse]` | Sample, VAE-decode, preview, and update the PIPE |

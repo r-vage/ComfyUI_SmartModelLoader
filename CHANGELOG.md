@@ -2,6 +2,22 @@
 
 ## 2026-09-22
 
+### Version: 1.0.19
+
+- **Feat**
+  - Add Text Encode MiniMax Music 3 with validated caption/lyrics JSON, native seed and generation controls, and direct forwarding of conditioning and duration outputs.
+  - Keep native encoding imports lazy so missing ComfyUI support reports an actionable update error without preventing node registration.
+
+- **Docs**
+  - Document song JSON usage and node 47 replacement wiring while preserving the original audio workflow and encoder settings.
+
+**Changed files:**
+- `README.md`
+- `Readme/Smart_Loaders.md`
+- `core/minimax_music3.py`
+- `py/RvCond_TextEncodeMiniMaxMusic3.py`
+- `pyproject.toml`
+
 ### Version: 1.0.18
 
 - **Feat**
