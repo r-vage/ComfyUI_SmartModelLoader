@@ -369,7 +369,7 @@ class DownloadQueueManager:
             "air": row.get("air"),
             "destination": {
                 "category": category,
-                "root_id": root_id,
+                "root_id": f"{category}:{root_index}",
                 "root_index": root_index,
                 "subfolder": subfolder,
                 "filename": filename,
@@ -674,7 +674,9 @@ class DownloadQueueManager:
     def _destination(self, job: dict[str, Any]) -> tuple[Path, str]:
         destination = job["destination"]
         category = destination["category"]
-        root, _index = resolve_destination_root(category, destination["root_id"])
+        root, _index = resolve_destination_root(
+            category, destination["root_id"], for_download=False,
+        )
         relative_path = destination["relative_path"]
         _root, target, normalized = prepare_download_destination(
             root,
@@ -718,6 +720,19 @@ class DownloadQueueManager:
             if job.get("state") != "queued":
                 return
         self._update(job_uuid, state="preparing", started_at=job.get("started_at") or _utc_now(), error=None)
+        destination = job["destination"]
+        category = destination["category"]
+        _root, index = resolve_destination_root(category, destination["root_id"])
+        root_id = f"{category}:{index}"
+        if root_id != destination["root_id"]:
+            has_partial, _size = self._partial_status(job)
+            if has_partial:
+                raise ValueError(
+                    "Legacy unet partial retained. Use Delete Partial, then Retry to download into diffusion_models.",
+                )
+            destination = {**destination, "root_id": root_id, "root_index": index}
+            self._update(job_uuid, destination=destination)
+            job["destination"] = destination
         identity = job["provider_identity"]
         self._validate_provider_identity(identity)
         target, relative_path = self._destination(job)

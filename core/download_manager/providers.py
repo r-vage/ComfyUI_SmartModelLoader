@@ -107,10 +107,14 @@ def _root_id(category: str, index: int) -> str:
     return f"{category}:{index}"
 
 
+def _legacy_download_root(category: str, root: Path) -> bool:
+    return category in {"diffusion_models", "diffusion_models_gguf", "unet", "unet_gguf"} and root.name.casefold() == "unet"
+
+
 def get_destination_categories() -> list[dict[str, Any]]:
     categories: list[dict[str, Any]] = []
     for category, value in sorted(folder_paths.folder_names_and_paths.items()):
-        if category in _EXCLUDED_CATEGORIES or not isinstance(value, tuple) or not value:
+        if category in _EXCLUDED_CATEGORIES or category == "unet" or not isinstance(value, tuple) or not value:
             continue
         roots = value[0]
         if not isinstance(roots, (list, tuple)) or not roots:
@@ -119,10 +123,12 @@ def get_destination_categories() -> list[dict[str, Any]]:
         seen_roots: set[Path] = set()
         for index, root_value in enumerate(roots):
             root = Path(root_value).expanduser().absolute()
-            if root in seen_roots:
+            if root in seen_roots or _legacy_download_root(category, root):
                 continue
             seen_roots.add(root)
             root_entries.append((index, root.name or str(root)))
+        if not root_entries:
+            continue
         label_counts: dict[str, int] = {}
         for _index, label in root_entries:
             label_counts[label] = label_counts.get(label, 0) + 1
@@ -149,7 +155,9 @@ def get_destination_categories() -> list[dict[str, Any]]:
     return categories
 
 
-def resolve_destination_root(category: str, root_id: str) -> tuple[Path, int]:
+def resolve_destination_root(
+    category: str, root_id: str, *, for_download: bool = True,
+) -> tuple[Path, int]:
     if category in _EXCLUDED_CATEGORIES or category not in folder_paths.folder_names_and_paths:
         raise ValueError("Unknown destination category")
     prefix = f"{category}:"
@@ -163,6 +171,17 @@ def resolve_destination_root(category: str, root_id: str) -> tuple[Path, int]:
     if index < 0 or index >= len(roots):
         raise ValueError("Destination root is no longer registered")
     lexical = Path(roots[index]).expanduser().absolute()
+    if for_download and _legacy_download_root(category, lexical):
+        modern = lexical.parent / "diffusion_models"
+        index = next(
+            (i for i, value in enumerate(roots) if Path(value).expanduser().absolute() == modern),
+            -1,
+        )
+        if index < 0:
+            raise ValueError("Legacy unet downloads require a registered diffusion_models sibling")
+        lexical = modern
+    if for_download and category == "unet":
+        raise ValueError("Use the diffusion_models destination category")
     if lexical.is_symlink():
         raise ValueError("Symlinked destination roots are forbidden")
     lexical.mkdir(parents=True, exist_ok=True)

@@ -1,5 +1,29 @@
 # Changelog
 
+## 2026-09-30
+
+### Version: 1.0.20
+
+- **Fix**
+  - Exclude legacy unet roots from Download Manager destination choices and route stale selections and imported bundles to their registered diffusion_models sibling.
+  - Keep loading existing unet models supported, migrate saved jobs without partial data before transfer, and retain legacy partial files until explicitly deleted before retry.
+  - Expand LoRA strength controls and backend validation to -100.0 through 100.0 in Smart Model Loader, Model Loader, Model Loader Pipe, and every model/CLIP slot in LoRA Stack.
+
+- **Docs**
+  - Document modern diffusion download destinations and saved legacy queue handling.
+  - Update the loader guide with the expanded LoRA weight range.
+
+**Changed files:**
+- `Readme/Download_Manager.md`
+- `core/download_manager/manager.py`
+- `core/download_manager/providers.py`
+- `Readme/Smart_Loaders.md`
+- `core/model_loader/validation.py`
+- `core/model_loader_common.py`
+- `py/RvLoader_SmartModelLoader.py`
+- `py/RvTools_LoraStack.py`
+- `pyproject.toml`
+
 ## 2026-09-22
 
 ### Version: 1.0.19

@@ -38,6 +38,8 @@ The revision resolves to one immutable 40-character commit before files are list
 
 The destination grid is populated from ComfyUI's live registered model folders. It never accepts an arbitrary filesystem path and excludes `custom_nodes`. Repeated registrations of the same root appear once; distinct roots that share a folder name receive numbered labels such as `diffusion_models (1)` and `diffusion_models (2)`.
 
+New diffusion downloads use registered `diffusion_models` roots. The legacy `unet` root is excluded from download choices, while ComfyUI can still load models already stored there. Saved selections and imported bundles pointing to `unet` redirect to its registered `diffusion_models` sibling; if that sibling is not registered, the manager asks for a valid destination instead of choosing another folder.
+
 Use the suggestion as a starting point, then confirm ambiguous model files. Bulk controls apply only to rows that are already selected: select the files first, then choose the bulk category, registered root, or conflict policy. Hover the bulk controls or focus the adjacent help text for the same guidance. You can still override assignments per row. Subfolders must be relative and traversal-free; local filenames must remain basenames and preserve the provider file extension.
 
 Default format policy:
@@ -52,6 +54,8 @@ Default format policy:
 Unsupported or informational rows remain visible through the grid toggle and show why they cannot be selected.
 
 ## Persistent queue
+
+Saved queue jobs without partial data switch from `unet` to its registered `diffusion_models` sibling when started. A saved job with a partial file in `unet` stops with a clear message: use **Delete Partial**, then **Retry** to download into `diffusion_models`. This leaves partial files intact until explicitly deleted and preserves the destination history of completed jobs.
 
 New and imported entries are added in the **ready** state and do not download automatically. Select one or more ready entries in the Queue tab and choose **Start Selected**; the manager then processes the started transfers one at a time. **Remove Selected** deletes ready or finished queue records without deleting downloaded model files. Queued or active transfers must finish or be cancelled before their records can be removed. A cancelled or failed entry with retained partial data must be retried or use **Delete Partial** before its queue record can be removed.
 

@@ -33,8 +33,8 @@ class RvTools_LoraStack(io.ComfyNode):
                 [
                     io.Boolean.Input(f"switch_{i}", default=False, label_on="ON", label_off="OFF"),
                     io.Combo.Input(f"lora_name_{i}", options=loras),
-                    io.Float.Input(f"model_weight_{i}", default=1.0, min=-10.0, max=10.0, step=0.01),
-                    io.Float.Input(f"clip_weight_{i}", default=1.0, min=-10.0, max=10.0, step=0.01),
+                    io.Float.Input(f"model_weight_{i}", default=1.0, min=-100.0, max=100.0, step=0.01),
+                    io.Float.Input(f"clip_weight_{i}", default=1.0, min=-100.0, max=100.0, step=0.01),
                 ],
             )
 

@@ -952,8 +952,8 @@ def get_model_loader_inputs() -> list:
         io.Float.Input(
             "lora_weight_1",
             default=1.0,
-            min=-10.0,
-            max=10.0,
+            min=-100.0,
+            max=100.0,
             step=0.01,
             tooltip="LoRA 1 model weight",
         ),
@@ -970,8 +970,8 @@ def get_model_loader_inputs() -> list:
         io.Float.Input(
             "lora_weight_2",
             default=1.0,
-            min=-10.0,
-            max=10.0,
+            min=-100.0,
+            max=100.0,
             step=0.01,
             tooltip="LoRA 2 model weight",
         ),
@@ -988,8 +988,8 @@ def get_model_loader_inputs() -> list:
         io.Float.Input(
             "lora_weight_3",
             default=1.0,
-            min=-10.0,
-            max=10.0,
+            min=-100.0,
+            max=100.0,
             step=0.01,
             tooltip="LoRA 3 model weight",
         ),

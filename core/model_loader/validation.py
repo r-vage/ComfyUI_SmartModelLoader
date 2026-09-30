@@ -191,9 +191,9 @@ _NUMERIC_BOUNDS = {
     "cfg": (0.0, 1000.0),
     "flux_guidance": (0.0, 1000.0),
     "seed": (-3, 2**64 - 1),
-    "lora_weight_1": (-10.0, 10.0),
-    "lora_weight_2": (-10.0, 10.0),
-    "lora_weight_3": (-10.0, 10.0),
+    "lora_weight_1": (-100.0, 100.0),
+    "lora_weight_2": (-100.0, 100.0),
+    "lora_weight_3": (-100.0, 100.0),
 }
 _MAX_WORKFLOW_METADATA_BYTES = 1024 * 1024
 _MAX_LATENT_PIXEL_BATCH = 256 * 1024 * 1024

@@ -327,9 +327,9 @@ Enable the **lora** chip to add up to 3 LoRA slots.
 Each slot provides:
 - `lora_switch_N` — On/Off toggle
 - `lora_name_N` — LoRA file from `ComfyUI/models/loras/`
-- `lora_weight_N` — Weight (-10.0 to 10.0, default 1.0)
+- `lora_weight_N` — Weight (-100.0 to 100.0, default 1.0)
 
-Set `lora_count` to control how many slots are visible (1–3). LoRAs are applied model-only (no separate CLIP weight).
+Set `lora_count` to control how many slots are visible (1–3). LoRAs are applied model-only (no separate CLIP weight). The same range applies to Model Loader and Model Loader Pipe. The standalone LoRA Stack accepts -100.0 to 100.0 for every model and CLIP weight across its ten slots.
 
 ---
 
