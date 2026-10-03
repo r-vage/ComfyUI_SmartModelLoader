@@ -2,6 +2,19 @@
 
 ## 2026-10-03
 
+### Version: 1.0.22
+
+- **Fix**
+  - Restore legacy Smart Model Loader v2 and IO Checkpoint Loader v2 IDs before workflow construction so JSON and generated-image imports use the current nodes and widget migrations, including inside subgraphs.
+
+- **Docs**
+  - Document automatic legacy workflow import without modifying source files.
+
+**Changed files:**
+- `js/smart-model-loader-workflow-compat.js`
+- `README.md`
+- `pyproject.toml`
+
 ### Version: 1.0.21
 
 - **Fix**

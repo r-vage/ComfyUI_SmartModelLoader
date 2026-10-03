@@ -8,6 +8,11 @@ Smart Model Loader includes sixteen Nodes 2.0-ready nodes, including the
 workflow-compatible LoRA Stack and Nunchaku PuLID tools. ComfyUI Eclipse is
 optional.
 
+Older workflows and generated images using `Smart Model Loader v2 [Eclipse]` or
+`IO Checkpoint Loader v2 [Eclipse]` import automatically into the current nodes,
+including inside subgraphs. Saved values and connections are retained, and the
+original file stays unchanged. Save the loaded workflow to keep the updated IDs.
+
 ![Annotated Nodes 2.0 workflow connecting Smart Model Loader, IO Checkpoint Loader, CLIP encoders, and the pipe KSampler](Readme/assets/pipeline-overview.png)
 
 ## Why use it?
