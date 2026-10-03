@@ -4,7 +4,6 @@ import {
 import {
     debounce,
     canvasDirtyBatcher,
-    smartResize,
     createWidgetVisibilityManager,
     onVueModeChange,
     isConfiguringGraph,
@@ -68,7 +67,6 @@ for (const [nodeName, cfg] of Object.entries(NODE_CONFIGS)) {
                 const vis = createWidgetVisibilityManager(node);
                 node._Eclipse_vis = vis;
                 const g = (name) => vis.getValue(name);
-                const d = (name, show) => vis.setVisible(name, show);
                 const autoFeaturesW = node.widgets?.find(w => w.name === 'features');
                 let featWidget;
                 const origIdx = autoFeaturesW ? node.widgets.indexOf(autoFeaturesW) : 0;
@@ -90,7 +88,10 @@ for (const [nodeName, cfg] of Object.entries(NODE_CONFIGS)) {
                     }
                 }).catch(() => {});
                 const origModelLists = {};
-                const updateVisibility = () => {
+                const updateVisibility = (userDriven = false) => {
+                    if (vis.isRemoved()) return;
+                    const entries = [];
+                    const d = (name, show) => entries.push([name, show]);
                     const raw = vis.getValue('features');
                     const feats = new Set(Array.isArray(raw) ? raw : []);
                     const modelType = g('model_type');
@@ -195,16 +196,16 @@ for (const [nodeName, cfg] of Object.entries(NODE_CONFIGS)) {
                     d('sigma_min', hasModelSampling && isContinuous);
                     d('blocks_to_swap', hasBlockSwap);
                     d('offload_embeddings', hasBlockSwap);
-                    smartResize(node);
+                    vis.resizeIfChanged(vis.setVisibleBatch(entries, { userDriven }));
                 };
                 const debouncedUpdate = debounce(updateVisibility, 100);
+                vis.onCleanup(() => debouncedUpdate.cancel());
                 const origFeatCallback = featWidget?.callback;
                 if (featWidget) {
                     featWidget.callback = function (value) {
                         origFeatCallback?.call(this, value);
                         if (autoFeaturesW) autoFeaturesW.value = (Array.isArray(featWidget.value) ? featWidget.value : []).join(',');
-                        vis.markUserDriven();
-                        updateVisibility();
+                        updateVisibility(true);
                     };
                 }
                 ['model_type', 'enable_clip_layer', 'lora_count', 'sampling_method', ].forEach((wName) => {
@@ -213,8 +214,7 @@ for (const [nodeName, cfg] of Object.entries(NODE_CONFIGS)) {
                         const orig = w.callback;
                         w.callback = function () {
                             orig && orig.apply(this, arguments);
-                            vis.markUserDriven();
-                            debouncedUpdate();
+                            debouncedUpdate(true);
                         };
                     }
                 });
@@ -224,15 +224,14 @@ for (const [nodeName, cfg] of Object.entries(NODE_CONFIGS)) {
                         const orig = sw.callback;
                         sw.callback = function () {
                             orig && orig.apply(this, arguments);
-                            vis.markUserDriven();
-                            debouncedUpdate();
+                            debouncedUpdate(true);
                         };
                     }
                 }
                 const refreshModelFiles = async () => {
                     try {
                         const data = await fetchSharedModelFiles();
-                        if (!data) return;
+                        if (!data || vis.isRemoved()) return;
                         const applyList = (wName, list) => {
                             const w = node.widgets?.find((x) => x.name === wName);
                             if (w && w.options && w.options.values) {
@@ -270,6 +269,8 @@ for (const [nodeName, cfg] of Object.entries(NODE_CONFIGS)) {
                 refreshModelFiles();
                 const origOnConfigure = node.onConfigure;
                 node.onConfigure = function (config) {
+                    debouncedUpdate.cancel();
+                    vis.resetLayout();
                     origOnConfigure && origOnConfigure.apply(this, arguments);
                     refreshModelFiles();
                     updateVisibility();

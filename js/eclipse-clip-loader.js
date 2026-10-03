@@ -4,7 +4,6 @@ import {
 import {
     debounce,
     canvasDirtyBatcher,
-    smartResize,
     createWidgetVisibilityManager,
     isConfiguringGraph,
 } from './eclipse-widget-performance-utils.js';
@@ -22,9 +21,11 @@ app.registerExtension({
             const node = this;
             const vis = createWidgetVisibilityManager(node);
             const g = (name) => vis.getValue(name);
-            const d = (name, show) => vis.setVisible(name, show);
             const origClipLists = {};
-            const updateVisibility = () => {
+            const updateVisibility = (userDriven = false) => {
+                if (vis.isRemoved()) return;
+                const entries = [];
+                const d = (name, show) => entries.push([name, show]);
                 const clipCount = parseInt(g('clip_count')) || 1;
                 ['clip_name1', 'clip_name2', 'clip_name3', 'clip_name4'].forEach((wName) => {
                     const w = node.widgets?.find((x) => x.name === wName);
@@ -37,22 +38,22 @@ app.registerExtension({
                 d('clip_name2', clipCount >= 2);
                 d('clip_name3', clipCount >= 3);
                 d('clip_name4', clipCount >= 4);
-                smartResize(node);
+                vis.resizeIfChanged(vis.setVisibleBatch(entries, { userDriven }));
             };
             const debouncedUpdate = debounce(updateVisibility, 100);
+            vis.onCleanup(() => debouncedUpdate.cancel());
             const w = node.widgets?.find((x) => x.name === 'clip_count');
             if (w) {
                 const orig = w.callback;
                 w.callback = function () {
                     orig && orig.apply(this, arguments);
-                    vis.markUserDriven();
-                    debouncedUpdate();
+                    debouncedUpdate(true);
                 };
             }
             const refreshClipFiles = async () => {
                 try {
                     const data = await fetchSharedModelFiles();
-                    if (!data) return;
+                    if (!data || vis.isRemoved()) return;
                     if (data.clip_combined) {
                         const applyList = (wName, list) => {
                             const w = node.widgets?.find((x) => x.name === wName);
@@ -82,6 +83,8 @@ app.registerExtension({
             refreshClipFiles();
             const origOnConfigure = node.onConfigure;
             node.onConfigure = function (config) {
+                debouncedUpdate.cancel();
+                vis.resetLayout();
                 origOnConfigure && origOnConfigure.apply(this, arguments);
                 refreshClipFiles();
                 updateVisibility();

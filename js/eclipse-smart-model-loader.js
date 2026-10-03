@@ -6,7 +6,6 @@ import {
     debounce,
     canvasDirtyBatcher,
     notifyVue,
-    smartResize,
     createWidgetVisibilityManager,
     onVueModeChange,
     isConfiguringGraph,
@@ -925,6 +924,7 @@ app.registerExtension({
             const refreshTemplateList = async () => {
                 try {
                     const templates = await fetchSharedTemplateList();
+                    if (vis.isRemoved()) return null;
                     if (templates) {
                         const w = node.widgets?.find(w => w.name === 'template_name');
                         if (w?.options?.values) {
@@ -941,7 +941,7 @@ app.registerExtension({
             const refreshModelFiles = async () => {
                 try {
                     const data = await fetchSharedModelFiles();
-                    if (!data) return;
+                    if (!data || vis.isRemoved()) return;
                     const expectedKeys = new Set(Object.keys(parseExpectedHashes()).flatMap(key => {
                         const relative = key.includes(':') ? key.slice(key.indexOf(':') + 1) : key;
                         return [relative, relative.split('/').pop()];
@@ -1096,10 +1096,14 @@ app.registerExtension({
                 }
                 return null;
             };
-            const applyTemplate = async (name) => {
+            let templateGeneration = 0;
+            vis.onCleanup(() => { templateGeneration++; });
+            const applyTemplate = async (name, userDriven = false) => {
+                const generation = ++templateGeneration;
                 let data = await loadTemplateData(name);
+                if (generation !== templateGeneration || vis.isRemoved()) return;
                 if (!data) {
-                    updateVisibility();
+                    updateVisibility(userDriven);
                     return;
                 }
                 const prevFeats = Array.isArray(featWidget.value) ? featWidget.value : [];
@@ -1180,7 +1184,7 @@ app.registerExtension({
                     if (data.flux_guidance !== undefined) sv('flux_guidance', data.flux_guidance);
                 } finally {
                     isLoadingTemplate = false;
-                    updateVisibility();
+                    updateVisibility(userDriven);
                     node.setDirtyCanvas(true, true);
                     await refreshModelFiles();
                     // After template load: sync integrity editor with the active model target
@@ -1198,7 +1202,7 @@ app.registerExtension({
                     resetAllFields();
                     updateVisibility();
                 } else if (action === 'Load' && tmplName && tmplName !== 'None') {
-                    await applyTemplate(tmplName);
+                    await applyTemplate(tmplName, true);
                 } else if (action === 'Save' && newName && newName.trim()) {
                     const saveName = newName.trim();
                     const config = buildTemplateConfig();
@@ -1438,7 +1442,9 @@ app.registerExtension({
                 }
                 return cfg;
             };
-            const updateVisibility = () => {
+            const updateVisibility = (userDriven = false) => {
+                if (vis.isRemoved()) return;
+                const entries = [];
                 const raw = vis.getValue('features');
                 const feats = new Set(Array.isArray(raw) ? raw : []);
                 const mt = gv('model_type');
@@ -1449,7 +1455,7 @@ app.registerExtension({
                 const isNQwen = mt === 'Nunchaku Qwen';
                 const isNZimg = mt === 'Nunchaku ZImage';
                 const isGGUF = mt === 'GGUF Model';
-                const d = (name, show) => vis.setVisible(name, show);
+                const d = (name, show) => entries.push([name, show]);
 
                 // Integrity controls: reveal recovery for a missing or mismatched active file.
                 const missingActiveFiles = getMissingActiveFiles();
@@ -1704,9 +1710,23 @@ app.registerExtension({
                 const seedVisible = feats.has('seed');
                 d('seed', seedVisible);
                 for (const name of SEED_BUTTONS) d(name, seedVisible);
-                smartResize(node);
+                vis.resizeIfChanged(vis.setVisibleBatch(entries, { userDriven }));
             };
-            const debouncedUpdate = debounce(updateVisibility, 100);
+            let pendingUserVisibility = false;
+            const flushVisibility = debounce(() => {
+                const userDriven = pendingUserVisibility;
+                pendingUserVisibility = false;
+                updateVisibility(userDriven);
+            }, 100);
+            const debouncedUpdate = (userDriven = false) => {
+                pendingUserVisibility ||= userDriven === true;
+                flushVisibility();
+            };
+            debouncedUpdate.cancel = () => {
+                pendingUserVisibility = false;
+                flushVisibility.cancel();
+            };
+            vis.onCleanup(() => debouncedUpdate.cancel());
             const origFeatCallback = featWidget?.callback;
             if (featWidget) {
                 featWidget.callback = function (value) {
@@ -1728,8 +1748,7 @@ app.registerExtension({
                             ? node._Eclipse_lastSeed : 0;
                         node._Eclipse_seedWidget.value = fallback;
                     }
-                    vis.markUserDriven();
-                    debouncedUpdate();
+                    debouncedUpdate(true);
                     if (autoFeaturesW) autoFeaturesW.value = (Array.isArray(featWidget.value) ? featWidget.value : []).join(',');
                 };
             }
@@ -1740,7 +1759,6 @@ app.registerExtension({
                 const origCb = w.callback;
                 w.callback = function () {
                     if (origCb) origCb.apply(this, arguments);
-                    vis.markUserDriven();
                     if (wName === 'model_type') {
                         updateModelPrecisionOptions();
                     }
@@ -1788,7 +1806,7 @@ app.registerExtension({
                             sv('sigma_min', 0.03);
                         }
                     }
-                    debouncedUpdate();
+                    debouncedUpdate(true);
                 };
             }
             const onTemplateChanged = (e) => {
@@ -1816,8 +1834,7 @@ app.registerExtension({
                     const origCb = sw.callback;
                     sw.callback = function () {
                         if (origCb) origCb.apply(this, arguments);
-                        vis.markUserDriven();
-                        debouncedUpdate();
+                        debouncedUpdate(true);
                     };
                 }
             }
@@ -1836,6 +1853,9 @@ app.registerExtension({
             refreshModelFiles();
             const origOnConfigure = node.onConfigure;
             node.onConfigure = function (data) {
+                debouncedUpdate.cancel();
+                templateGeneration++;
+                vis.resetLayout();
                 if (origOnConfigure) origOnConfigure.apply(this, arguments);
                 updateModelPrecisionOptions();
                 refreshModelFiles();

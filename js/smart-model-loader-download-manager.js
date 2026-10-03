@@ -120,6 +120,12 @@ class DownloadManagerModal {
         this.sortDir = 'desc';
         this.jobs = [];
         this.selectedJobs = new Set();
+        this.queueRows = new Map();
+        this.pendingQueueJobs = new Set();
+        this.queueFrame = null;
+        this.queueRevision = 0;
+        this.queueJobRevisions = new Map();
+        this.queueRequest = 0;
         this.originalFocus = null;
         this.busy = false;
     }
@@ -138,6 +144,11 @@ class DownloadManagerModal {
     }
 
     close() {
+        if (this.queueFrame !== null) cancelAnimationFrame(this.queueFrame);
+        this.queueFrame = null;
+        this.pendingQueueJobs.clear();
+        this.queueRows.clear();
+        this.queueBody = null;
         this.backdrop?.remove();
         this.backdrop = null;
         if (this.originalFocus instanceof HTMLElement) this.originalFocus.focus();
@@ -627,31 +638,95 @@ class DownloadManagerModal {
     }
 
     async loadQueue() {
+        const requestId = ++this.queueRequest;
+        const revision = this.queueRevision;
         try {
             const data = await request('/smart-model-loader/download-manager/queue');
-            this.jobs = data.jobs || [];
+            if (requestId !== this.queueRequest) return;
+            // Websocket progress received while this snapshot was in flight is
+            // newer than the response. Keep it, including newly announced jobs.
+            const updated = new Map(this.jobs.filter(job =>
+                (this.queueJobRevisions.get(job.uuid) || 0) > revision
+            ).map(job => [job.uuid, job]));
+            this.jobs = (data.jobs || []).map(job => {
+                const current = updated.get(job.uuid) || job;
+                updated.delete(job.uuid);
+                return current;
+            });
+            this.jobs.push(...updated.values());
             const available = new Set(this.jobs.map(job => job.uuid));
+            for (const uuid of this.queueJobRevisions.keys()) {
+                if (!available.has(uuid)) this.queueJobRevisions.delete(uuid);
+            }
             this.selectedJobs = new Set([...this.selectedJobs].filter(jobUuid => available.has(jobUuid)));
-            this.renderQueue();
-        } catch (error) { this.setStatus(error.message, 'error'); }
+            if (this.backdrop?.isConnected) this.renderQueue();
+        } catch (error) {
+            if (requestId === this.queueRequest && this.backdrop?.isConnected) this.setStatus(error.message, 'error');
+        }
     }
 
     updateJob(job) {
+        this.queueJobRevisions.set(job.uuid, ++this.queueRevision);
         const index = this.jobs.findIndex(item => item.uuid === job.uuid);
         if (index >= 0) this.jobs[index] = job; else this.jobs.push(job);
-        if (this.backdrop?.isConnected) this.renderQueue();
+        if (!this.backdrop?.isConnected) return;
+        this.pendingQueueJobs.add(job.uuid);
+        if (this.queueFrame !== null) return;
+        this.queueFrame = requestAnimationFrame(() => {
+            this.queueFrame = null;
+            const changed = this.pendingQueueJobs;
+            this.pendingQueueJobs = new Set();
+            if (!this.backdrop?.isConnected) return;
+            if ([...changed].some(uuid => !this.queueRows.has(uuid))) {
+                this.renderQueue();
+                return;
+            }
+            for (const current of this.jobs) {
+                if (changed.has(current.uuid)) this.updateQueueRow(current);
+            }
+            this.updateQueueActions();
+        });
     }
 
     renderQueue() {
-        this.queueTable.replaceChildren();
-        const thead = document.createElement('thead');
-        const header = document.createElement('tr');
-        for (const text of ['Select', 'File', 'Provider', 'Destination', 'State / progress', 'Local SHA-256', 'Actions']) {
-            const th = el('th', '', text); th.scope = 'col'; header.appendChild(th);
+        if (!this.queueBody || this.queueBody.parentNode !== this.queueTable) {
+            this.queueRows.clear();
+            const thead = document.createElement('thead');
+            const header = document.createElement('tr');
+            for (const text of ['Select', 'File', 'Provider', 'Destination', 'State / progress', 'Local SHA-256', 'Actions']) {
+                const th = el('th', '', text); th.scope = 'col'; header.appendChild(th);
+            }
+            thead.appendChild(header);
+            this.queueBody = document.createElement('tbody');
+            this.queueTable.replaceChildren(thead, this.queueBody);
         }
-        thead.appendChild(header);
-        const tbody = document.createElement('tbody');
+        const available = new Set(this.jobs.map(job => job.uuid));
+        for (const [uuid, row] of this.queueRows) {
+            if (available.has(uuid)) continue;
+            row.tr.remove();
+            this.queueRows.delete(uuid);
+        }
+        this.queueEmptyRow?.remove();
+        this.queueEmptyRow = null;
+        let previous = null;
         for (const job of [...this.jobs].reverse()) {
+            this.updateQueueRow(job);
+            const row = this.queueRows.get(job.uuid).tr;
+            const expected = previous ? previous.nextSibling : this.queueBody.firstChild;
+            if (expected !== row) this.queueBody.insertBefore(row, expected);
+            previous = row;
+        }
+        if (!this.jobs.length) {
+            const tr = document.createElement('tr'); const td = el('td', 'sml-dlm-muted', 'The persistent queue is empty.'); td.colSpan = 7; tr.appendChild(td);
+            this.queueBody.appendChild(tr);
+            this.queueEmptyRow = tr;
+        }
+        this.updateQueueActions();
+    }
+
+    updateQueueRow(job) {
+        let row = this.queueRows.get(job.uuid);
+        if (!row) {
             const tr = document.createElement('tr');
             tr.dataset.jobUuid = job.uuid;
             const selectedTd = document.createElement('td');
@@ -663,33 +738,44 @@ class DownloadManagerModal {
                 this.updateQueueActions();
             });
             selectedTd.appendChild(selected);
-            const file = el('td', 'sml-dlm-remote', job.destination?.filename || 'Unknown');
-            const provider = el('td', '', job.provider_identity?.provider || 'Unknown');
-            const destination = el('td', '', `${job.destination?.category || ''} / ${job.destination?.relative_path || ''}`);
+            const file = el('td', 'sml-dlm-remote');
+            const provider = el('td');
+            const destination = el('td');
             const progressTd = el('td', 'sml-dlm-progress');
             const progress = document.createElement('progress');
-            progress.max = 100; progress.value = job.progress?.percent || 0;
-            progress.setAttribute('aria-label', `${job.state} ${progress.value} percent`);
-            const partialNote = job.has_partial
-                ? ` — ${formatBytes(job.partial_bytes)} partial retained`
-                : '';
-            progressTd.append(el('div', '', `${job.state}${job.error ? ` — ${job.error}` : ''}${partialNote}`), progress);
-            const hash = el('td', 'sml-dlm-digest', job.local_sha256 ? `${job.local_sha256.slice(0, 12)}…` : '—');
-            if (job.local_sha256) hash.title = job.local_sha256;
+            progress.max = 100;
+            const state = el('div');
+            progressTd.append(state, progress);
+            const hash = el('td', 'sml-dlm-digest');
             const actions = el('td', 'sml-dlm-queue-actions');
-            if (['queued', 'transferring'].includes(job.state)) actions.appendChild(button('Cancel', () => this.queueAction('cancel', job.uuid)));
-            if (['failed', 'cancelled'].includes(job.state)) actions.appendChild(button('Retry', () => this.queueAction('retry', job.uuid)));
-            if (['failed', 'cancelled'].includes(job.state) && job.has_partial) {
-                actions.appendChild(button('Delete Partial', () => this.queueAction('discard-partial', job.uuid)));
-            }
             tr.append(selectedTd, file, provider, destination, progressTd, hash, actions);
-            tbody.appendChild(tr);
+            row = { tr, selected, file, provider, destination, state, progress, hash, actions };
+            this.queueRows.set(job.uuid, row);
         }
-        if (!this.jobs.length) {
-            const tr = document.createElement('tr'); const td = el('td', 'sml-dlm-muted', 'The persistent queue is empty.'); td.colSpan = 7; tr.appendChild(td); tbody.appendChild(tr);
+        const text = (element, value) => { if (element.textContent !== value) element.textContent = value; };
+        row.selected.checked = this.selectedJobs.has(job.uuid);
+        row.selected.setAttribute('aria-label', `Select queue job ${job.destination?.filename}`);
+        text(row.file, job.destination?.filename || 'Unknown');
+        text(row.provider, job.provider_identity?.provider || 'Unknown');
+        text(row.destination, `${job.destination?.category || ''} / ${job.destination?.relative_path || ''}`);
+        const partial = job.has_partial ? ` — ${formatBytes(job.partial_bytes)} partial retained` : '';
+        text(row.state, `${job.state}${job.error ? ` — ${job.error}` : ''}${partial}`);
+        const percent = job.progress?.percent || 0;
+        if (row.progress.value !== percent) row.progress.value = percent;
+        row.progress.setAttribute('aria-label', `${job.state} ${percent} percent`);
+        text(row.hash, job.local_sha256 ? `${job.local_sha256.slice(0, 12)}…` : '—');
+        row.hash.title = job.local_sha256 || '';
+        const canCancel = ['queued', 'transferring'].includes(job.state);
+        const canRetry = ['failed', 'cancelled'].includes(job.state);
+        const canDiscard = canRetry && !!job.has_partial;
+        const actionKey = `${canCancel}/${canRetry}/${canDiscard}`;
+        if (row.actionKey !== actionKey) {
+            row.actions.replaceChildren();
+            if (canCancel) row.actions.appendChild(button('Cancel', () => this.queueAction('cancel', job.uuid)));
+            if (canRetry) row.actions.appendChild(button('Retry', () => this.queueAction('retry', job.uuid)));
+            if (canDiscard) row.actions.appendChild(button('Delete Partial', () => this.queueAction('discard-partial', job.uuid)));
+            row.actionKey = actionKey;
         }
-        this.queueTable.append(thead, tbody);
-        this.updateQueueActions();
     }
 
     async queueAction(action, jobUuid) {

@@ -2,7 +2,6 @@ import {
     app
 } from './comfy/index.js';
 import {
-    smartResize,
     createWidgetVisibilityManager,
     isConfiguringGraph,
 } from './eclipse-widget-performance-utils.js';
@@ -55,7 +54,6 @@ app.registerExtension({
             const ret = origCreated?.apply(this, arguments);
             const node = this;
             const vis = createWidgetVisibilityManager(node);
-            const d = (name, show) => vis.setVisible(name, show);
             const gv = (name) => vis.getValue(name);
             const modeW = node.widgets?.find((w) => w.name === 'mode');
             const origIdx = modeW ? node.widgets.indexOf(modeW) : 0;
@@ -79,7 +77,7 @@ app.registerExtension({
                     currentMode = opt;
                     for (const c of chipEls) c.classList.toggle('selected', c.textContent === currentMode);
                     if (modeW) modeW.value = currentMode;
-                    updateVisibility();
+                    updateVisibility(true);
                 });
                 chipEls.push(chip);
                 bar.appendChild(chip);
@@ -101,7 +99,10 @@ app.registerExtension({
                 node.widgets.splice(newIdx, 1);
                 node.widgets.splice(origIdx, 0, modeBarWidget);
             }
-            const updateVisibility = () => {
+            const updateVisibility = (userDriven = false) => {
+                if (vis.isRemoved()) return;
+                const entries = [];
+                const d = (name, show) => entries.push([name, show]);
                 if (node.id === -1) return;
                 const hideClip = currentMode === 'model_only' || currentMode === 'simple';
                 const count = gv('lora_count') || 5;
@@ -113,15 +114,14 @@ app.registerExtension({
                     d(`model_weight_${i}`, switchOn);
                     d(`clip_weight_${i}`, switchOn && !hideClip);
                 }
-                smartResize(node);
+                vis.resizeIfChanged(vis.setVisibleBatch(entries, { userDriven }));
             };
             const lcW = node.widgets?.find((w) => w.name === 'lora_count');
             if (lcW) {
                 const origCb = lcW.callback;
                 lcW.callback = function () {
                     origCb?.apply(this, arguments);
-                    vis.markUserDriven();
-                    updateVisibility();
+                    updateVisibility(true);
                 };
             }
             for (let i = 1; i <= 10; i++) {
@@ -130,8 +130,7 @@ app.registerExtension({
                     const origCb = sw.callback;
                     sw.callback = function () {
                         origCb?.apply(this, arguments);
-                        vis.markUserDriven();
-                        updateVisibility();
+                        updateVisibility(true);
                     };
                 }
             }
@@ -156,6 +155,7 @@ app.registerExtension({
                 // return and leave every per-slot widget hidden.  By the next
                 // frame the graph has assigned an id.
                 requestAnimationFrame(() => {
+                    if (vis.isRemoved()) return;
                     updateVisibility();
                     // Sync size-shrink — smartResize's async rAF pass
                     // eventually corrects this but leaves a visible tall-node
@@ -170,6 +170,7 @@ app.registerExtension({
             }
             const origConfigure = node.onConfigure;
             node.onConfigure = function (data) {
+                vis.resetLayout();
                 origConfigure?.apply(this, arguments);
                 // Inside configuringGraph window — Phase 1.7 skips Vue
                 // notifies, so this synchronous refresh is cheap.

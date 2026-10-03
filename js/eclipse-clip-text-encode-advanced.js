@@ -2,7 +2,6 @@ import { app } from './comfy/index.js';
 import {
     createWidgetVisibilityManager,
     isConfiguringGraph,
-    smartResize,
 } from './eclipse-widget-performance-utils.js';
 
 const NODE_NAME = 'CLIP Text Encode (Advanced) [Eclipse]';
@@ -20,11 +19,11 @@ app.registerExtension({
             node._Eclipse_vis = vis;
 
             const updateVisibility = () => {
+                if (vis.isRemoved()) return;
                 if (node.id === -1) return;
                 const rebalancePreset = vis.getValue('rebalance_preset');
                 const isCustom = rebalancePreset === 'custom';
-                vis.setVisible('per_layer_weights', isCustom);
-                smartResize(node);
+                vis.resizeIfChanged(vis.setVisibleBatch([['per_layer_weights', isCustom]]));
             };
 
             // Set up callback/listener for changes to rebalance_preset
@@ -42,6 +41,7 @@ app.registerExtension({
 
             const origOnConfigure = node.onConfigure;
             node.onConfigure = function () {
+                vis.resetLayout();
                 origOnConfigure?.apply(this, arguments);
                 updateVisibility();
             };
@@ -49,6 +49,7 @@ app.registerExtension({
             if (!node._Eclipse_initialized && !isConfiguringGraph()) {
                 node._Eclipse_initialized = true;
                 requestAnimationFrame(() => {
+                    if (vis.isRemoved()) return;
                     updateVisibility();
                     const oldHeight = node.size[1];
                     node.size[1] = 0;

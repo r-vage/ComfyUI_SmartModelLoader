@@ -1,5 +1,31 @@
 # Changelog
 
+## 2026-10-03
+
+### Version: 1.0.21
+
+- **Fix**
+  - Match Vue node CSS height to native title-inclusive geometry and resume pending sizing when fresh nodes enter their graph.
+  - Preserve restored links while carrying explicit user intent through delayed visibility updates, and ignore removed-node refreshes.
+  - Keep newer download progress when queue snapshots arrive late, preserving selection, focus, and current actions.
+
+- **Perf**
+  - Batch widget visibility and mount lookups, skip unchanged layout work, and index native widget/slot lookups within owned node passes.
+  - Update affected Download Manager rows once per frame instead of rebuilding the queue for every progress event.
+  - Add counters-only performance diagnostics without collecting caller stacks.
+
+**Changed files:**
+- `js/eclipse-clip-loader.js`
+- `js/eclipse-clip-text-encode-advanced.js`
+- `js/eclipse-lora-stack.js`
+- `js/eclipse-model-loader.js`
+- `js/eclipse-sampler-tiled-decode.js`
+- `js/eclipse-smart-model-loader.js`
+- `js/eclipse-widget-performance-utils.js`
+- `js/smart-model-loader-download-manager.js`
+- `js/smart-model-loader-node-lookup-performance.js`
+- `pyproject.toml`
+
 ## 2026-09-30
 
 ### Version: 1.0.20

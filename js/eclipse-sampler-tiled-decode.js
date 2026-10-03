@@ -137,22 +137,24 @@ function invalidateGraphElements(graph) {
     }
 }
 
-function findActiveSamplerNode(nodeId) {
+function activeSamplerNodes() {
     const graph = app.canvas?.graph;
-    if (!isVueMode() || graph !== activeGraph || graph !== readyGraph) return null;
-    return graph?._nodes?.find(node =>
-        samplerNodes.has(node) &&
-        node.graph === graph &&
-        String(node.id) === nodeId
-    ) || null;
+    const nodes = new Map();
+    if (!isVueMode() || graph !== activeGraph || graph !== readyGraph) return nodes;
+    for (const node of graph?._nodes || []) {
+        if (!samplerNodes.has(node) || node.graph !== graph) continue;
+        const id = String(node.id);
+        if (!nodes.has(id)) nodes.set(id, node);
+    }
+    return nodes;
 }
 
-function reapplyMountedPreviewPhase(element) {
+function reapplyMountedPreviewPhase(element, nodes) {
     if (!element.isConnected) return;
     const nodeId = element.getAttribute?.('data-node-id');
     if (nodeId == null) return;
-    const node = findActiveSamplerNode(nodeId);
-    if (!node) return;
+    const node = nodes.get(nodeId);
+    if (!node || node.graph !== app.canvas?.graph) return;
 
     const cached = node._eclipseSamplerVueElement;
     if (cached?.element !== element) {
@@ -169,13 +171,16 @@ function reapplyMountedPreviewPhase(element) {
 }
 
 function handleMountedPreviewNodes(records) {
+    if (!isVueMode()) return;
+    let nodes;
+    const reapply = element => reapplyMountedPreviewPhase(element, nodes ??= activeSamplerNodes());
     for (const record of records) {
         for (const addedNode of record.addedNodes || []) {
             if (addedNode.matches?.(VUE_NODE_SELECTOR)) {
-                reapplyMountedPreviewPhase(addedNode);
+                reapply(addedNode);
             }
             for (const element of addedNode.querySelectorAll?.(VUE_NODE_SELECTOR) || []) {
-                reapplyMountedPreviewPhase(element);
+                reapply(element);
             }
         }
     }
