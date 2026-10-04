@@ -1,0 +1,31 @@
+{
+  "features": [
+    "clip",
+    "vae",
+    "sampler"
+  ],
+  "model_type": "UNet Model",
+  "model_precision": "default",
+  "configure_clip": true,
+  "configure_vae": true,
+  "configure_sampler": true,
+  "configure_model_only_lora": false,
+  "configure_model_sampling": false,
+  "configure_blockswap": false,
+  "blocks_to_swap": 5,
+  "offload_embeddings": false,
+  "unet_name": "fluxtraitFLUX2KleinFLUXZ_klein9bV2.safetensors",
+  "weight_dtype": "fp8_e4m3fn",
+  "clip_source": "External",
+  "clip_count": "1",
+  "clip_type": "flux2",
+  "clip_name1": "qwen_3_8b_fp8mixed_abliterated.safetensors",
+  "vae_source": "External",
+  "vae_name": "flux2-vae.safetensors",
+  "sampler_name": "euler",
+  "scheduler": "simple",
+  "steps": 5,
+  "cfg": 1.5,
+  "expected_hashes": "{\"diffusion_models:fluxtraitFLUX2KleinFLUXZ_klein9bV2.safetensors\": {\"air\": \"urn:air:flux1:checkpoint:civitai:2086049@2482779+2371395\", \"sha256\": \"791d40e1f49a93ffd4366e47e9119a002060150433506137cdd305fd9292802e\", \"reference_type\": \"civitai\", \"folder_role\": \"diffusion_models\", \"relative_path\": \"fluxtraitFLUX2KleinFLUXZ_klein9bV2_1.safetensors\"}}",
+  "download_locators": "[]"
+}

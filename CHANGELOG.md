@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-10-04
+
+### Version: 1.0.23
+
+- **Feat**
+  - Bundle the Flux2_9B_fluxtrait_v2, NoctQ_v4_int8, Qwen Image v2.1_int8, and Redqw21-Unlocked_v2 loader templates with matching SHA-256 manifest entries.
+
+**Changed files:**
+- `.defaults/.manifest.json`
+- `.defaults/templates/Flux2_9B_fluxtrait_v2.json.example`
+- `.defaults/templates/NoctQ_v4_int8.json.example`
+- `.defaults/templates/Qwen Image v2.1_int8.json.example`
+- `.defaults/templates/Redqw21-Unlocked_v2.json.example`
+- `pyproject.toml`
+
 ## 2026-10-03
 
 ### Version: 1.0.22
