@@ -26,6 +26,6 @@
   "scheduler": "simple",
   "steps": 5,
   "cfg": 1.5,
-  "expected_hashes": "{\"diffusion_models:fluxtraitFLUX2KleinFLUXZ_klein9bV2.safetensors\": {\"air\": \"urn:air:flux1:checkpoint:civitai:2086049@2482779+2371395\", \"sha256\": \"791d40e1f49a93ffd4366e47e9119a002060150433506137cdd305fd9292802e\", \"reference_type\": \"civitai\", \"folder_role\": \"diffusion_models\", \"relative_path\": \"fluxtraitFLUX2KleinFLUXZ_klein9bV2_1.safetensors\"}}",
+  "expected_hashes": "{\"diffusion_models:fluxtraitFLUX2KleinFLUXZ_klein9bV2.safetensors\": {\"air\": \"urn:air:flux2:checkpoint:civitai:2086049@2805234+2691528\", \"sha256\": \"cb4694ee32ed911ff32a2463f7062da0c3c7186c84e2e2c2f744f12f9a71bcb1\", \"reference_type\": \"civitai\", \"folder_role\": \"diffusion_models\", \"relative_path\": \"fluxtraitFLUX2KleinFLUXZ_klein9bV2.safetensors\"}}",
   "download_locators": "[]"
 }

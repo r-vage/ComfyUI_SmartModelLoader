@@ -2,6 +2,15 @@
 
 ## 2026-10-04
 
+### Version: 1.0.24
+
+- **Fix**
+  - Correct the Flux2_9B_fluxtrait_v2 template to pin the Flux 2 Klein 9B V2 file and SHA-256 instead of Flux 1 weights, with matching filename metadata.
+
+**Changed files:**
+- `.defaults/templates/Flux2_9B_fluxtrait_v2.json.example`
+- `pyproject.toml`
+
 ### Version: 1.0.23
 
 - **Feat**
