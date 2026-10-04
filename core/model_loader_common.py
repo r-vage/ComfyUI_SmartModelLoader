@@ -219,11 +219,12 @@ def _apply_loras_nunchaku(model: Any, clip: Any, lora_params: list) -> tuple:
     except ImportError as e:
         log.warning(
             "LoRA", f"Nunchaku wrappers not available for LoRA application: {e}",
+            notify="Nunchaku wrappers are unavailable; LoRAs were not applied. See the server log.",
         )
         return (model, clip)
 
     if ComfyFluxWrapper is None:
-        log.warning("LoRA", "ComfyFluxWrapper is not available")
+        log.warning("LoRA", "ComfyFluxWrapper is not available", notify=True)
         return (model, clip)
 
     model_wrapper = model.model.diffusion_model
@@ -239,7 +240,7 @@ def _apply_loras_nunchaku(model: Any, clip: Any, lora_params: list) -> tuple:
     is_flux = wrapper_class_name == "ComfyFluxWrapper"
 
     if not (is_qwen or is_flux):
-        log.warning("LoRA", f"Unknown wrapper type: {wrapper_class_name}")
+        log.warning("LoRA", f"Unknown wrapper type: {wrapper_class_name}", notify=True)
         return (model, clip)
 
     # ── Qwen LoRA ──
@@ -264,7 +265,10 @@ def _apply_loras_nunchaku(model: Any, clip: Any, lora_params: list) -> tuple:
     try:
         from nunchaku.lora.flux import to_diffusers  # type: ignore
     except ImportError as e:
-        log.warning("LoRA", f"nunchaku.lora.flux not available: {e}")
+        log.warning(
+            "LoRA", f"nunchaku.lora.flux not available: {e}",
+            notify="The Nunchaku Flux LoRA module is unavailable; LoRAs were not applied. See the server log.",
+        )
         return (model, clip)
 
     if hasattr(model_wrapper, "_orig_mod"):
@@ -481,6 +485,7 @@ def apply_model_sampling(
         )
     log.warning(
         "Model Sampling", f"Unknown sampling method '{sampling_method}', skipping",
+        notify=True,
     )
     return model
 
@@ -660,6 +665,7 @@ def _apply_continuous_edm_sampling(
         log.warning(
             "Model Sampling",
             f"Unknown ContinuousEDM subtype '{sampling_subtype}', using eps",
+            notify=True,
         )
         sampling_type = comfy.model_sampling.EPS
 
@@ -1228,6 +1234,7 @@ def load_model(log_prefix: str, **kwargs) -> tuple[Any, Any, Any, Any, str, str]
             log.warning(
                 log_prefix,
                 f"'{ckpt_name}' uses extension '{ext}'. Consider .safetensors for safety.",
+                notify=True,
             )
         if not os.access(ckpt_path, os.R_OK):
             raise RuntimeError(f"Checkpoint file not readable: {ckpt_path}")
@@ -1273,6 +1280,7 @@ def load_model(log_prefix: str, **kwargs) -> tuple[Any, Any, Any, Any, str, str]
             log.warning(
                 log_prefix,
                 f"'{unet_name}' uses extension '{ext}'. Consider .safetensors.",
+                notify=True,
             )
         if not os.access(unet_path, os.R_OK):
             raise RuntimeError(f"UNet file not readable: {unet_path}")
@@ -1304,6 +1312,7 @@ def load_model(log_prefix: str, **kwargs) -> tuple[Any, Any, Any, Any, str, str]
             log.warning(
                 log_prefix,
                 f"'{nunchaku_name}' uses extension '{ext}'. Consider .safetensors.",
+                notify=True,
             )
         if not os.access(nunchaku_path, os.R_OK):
             raise RuntimeError(f"Nunchaku file not readable: {nunchaku_path}")
@@ -1339,6 +1348,7 @@ def load_model(log_prefix: str, **kwargs) -> tuple[Any, Any, Any, Any, str, str]
             log.warning(
                 log_prefix,
                 f"'{qwen_name}' uses extension '{ext}'. Consider .safetensors.",
+                notify=True,
             )
         if not os.access(qwen_path, os.R_OK):
             raise RuntimeError(f"Qwen file not readable: {qwen_path}")
@@ -1372,6 +1382,7 @@ def load_model(log_prefix: str, **kwargs) -> tuple[Any, Any, Any, Any, str, str]
             log.warning(
                 log_prefix,
                 f"'{zimage_name}' uses extension '{ext}'. Consider .safetensors.",
+                notify=True,
             )
         if not os.access(zimage_path, os.R_OK):
             raise RuntimeError(f"ZImage file not readable: {zimage_path}")
@@ -1398,7 +1409,7 @@ def load_model(log_prefix: str, **kwargs) -> tuple[Any, Any, Any, Any, str, str]
             raise FileNotFoundError(f"GGUF model not found: {gguf_name}")
 
         if not gguf_path.lower().endswith(".gguf"):
-            log.warning(log_prefix, f"'{gguf_name}' doesn't have .gguf extension")
+            log.warning(log_prefix, f"'{gguf_name}' doesn't have .gguf extension", notify=True)
         if not os.access(gguf_path, os.R_OK):
             raise RuntimeError(f"GGUF file not readable: {gguf_path}")
 
@@ -1434,11 +1445,13 @@ def load_model(log_prefix: str, **kwargs) -> tuple[Any, Any, Any, Any, str, str]
                 log.warning(
                     log_prefix,
                     f"LTX text encoder '{ltx_te}' not found — keeping baked CLIP",
+                    notify=True,
                 )
             elif not model_file_path:
                 log.warning(
                     log_prefix,
                     "LTX text encoder set but model file path unavailable — keeping baked CLIP",
+                    notify=True,
                 )
             else:
                 clip_paths = [gemma_path, model_file_path]
@@ -1466,6 +1479,7 @@ def load_model(log_prefix: str, **kwargs) -> tuple[Any, Any, Any, Any, str, str]
             log.warning(
                 log_prefix,
                 "LTX text encoder is only supported for Standard Checkpoint / UNet Model — ignoring",
+                notify=True,
             )
 
     # ── Extract baked audio VAE (LTX2 all-in-one checkpoints/UNet) ──

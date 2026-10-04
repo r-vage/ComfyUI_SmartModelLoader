@@ -2,6 +2,37 @@
 
 ## 2026-10-04
 
+### Version: 1.0.25
+
+- **Fix**
+  - Show native ComfyUI error and warning toasts for execution, input validation, settings, template actions, integrity checks, and failed downloads, including when the Download Manager is closed. Retain console diagnostics, inline status, and confirmation dialogs.
+  - Make skipped components and output-changing loader fallbacks visible without changing loading or integrity policies.
+  - Report failed template auto-saves and stop auto-save when the existing template cannot be read.
+  - Show a completion toast when a verified Download Manager job finishes with its window closed. Keep open-window status inline, suppress duplicate completion events, and distinguish skipped or unverified existing files.
+  - Log Download Manager transfer and verification progress periodically in debug mode, with completion, cancellation, and failure status in the terminal even when its window is closed.
+
+**Changed files:**
+- `core/download_manager/manager.py`
+- `core/logger.py`
+- `core/model_loader/blockswap.py`
+- `core/model_loader/integrity.py`
+- `core/model_loader/smart.py`
+- `core/model_loader/validation.py`
+- `core/model_loader_common.py`
+- `core/notifications.py`
+- `core/nunchaku_wrapper.py`
+- `js/eclipse-loader-shared.js`
+- `js/eclipse-smart-model-loader.js`
+- `js/smart-model-loader-download-manager.js`
+- `js/smart-model-loader-error-notifications.js`
+- `js/smart-model-loader-notifications.js`
+- `js/smart-model-loader-settings.js`
+- `py/RvCond_CLIPTextEncodeAdvanced.py`
+- `py/RvLoader_ClipLoader.py`
+- `py/RvTools_LoraStack_Apply.py`
+- `py/RvTools_NunchakuPuLID.py`
+- `pyproject.toml`
+
 ### Version: 1.0.24
 
 - **Fix**

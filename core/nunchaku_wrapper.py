@@ -561,6 +561,7 @@ def load_nunchaku_model(
             log.warning(
                 _LOG_PREFIX,
                 "CUDA not available — Nunchaku requires an NVIDIA GPU. Enabling CPU offload as fallback.",
+                notify=True,
             )
             cpu_offload = True
 
@@ -1885,7 +1886,10 @@ class ComfyQwenImageWrapper(nn.Module):
                     reset_qwen_lora_v2(self.model)
                     compose_qwen_loras_v2(self.model, self.loras)
                 except Exception as e:
-                    log.error("Qwen LoRA", f"Qwen LoRA re-compose retry failed: {e}")
+                    log.error(
+                        "Qwen LoRA", f"Qwen LoRA re-compose retry failed: {e}",
+                        notify="Qwen LoRA composition failed after retry. See the server log for details.",
+                    )
 
             # Rebuild offload manager if needed
             if should_enable_offload:

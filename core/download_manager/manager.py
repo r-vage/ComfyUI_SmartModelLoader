@@ -218,6 +218,7 @@ class DownloadQueueManager:
         self._load_error: str | None = None
         self._worker: threading.Thread | None = None
         self._last_progress_write: dict[str, tuple[float, int, str]] = {}
+        self._last_progress_log: dict[str, tuple[float, str, int]] = {}
         self._load()
 
     def _load(self) -> None:
@@ -504,6 +505,7 @@ class DownloadQueueManager:
             ]
             for job_uuid in removed:
                 self._last_progress_write.pop(job_uuid, None)
+                self._last_progress_log.pop(job_uuid, None)
             self._persist_locked()
         return removed
 
@@ -634,6 +636,8 @@ class DownloadQueueManager:
             result = copy.deepcopy(job)
         if should_write:
             self._emit(result)
+        else:
+            self._log_job(result)
 
     def _progress(self, job_uuid: str, processed: int, total: int) -> None:
         self._phase(job_uuid, "transferring", processed, total)
@@ -836,7 +840,51 @@ class DownloadQueueManager:
         except (JsonStoreError, KeyError, OSError, RuntimeError):
             log.error(_LOG_PREFIX, "Could not persist a failed queue job")
 
+    def _log_job(self, job: dict[str, Any]) -> None:
+        # Keep terminal diagnostics independent of the browser and its toasts.
+        # Report phase changes immediately, then at most every five seconds,
+        # with a final byte count before moving on to verification/promotion.
+        state = job.get("state", "")
+        if state == "aborted":
+            state = "cancelled"
+        progress = job.get("progress") or {}
+        processed = max(0, int(progress.get("bytes") or 0))
+        total = max(0, int(progress.get("total") or 0))
+        percent = min(100, processed * 100 // total) if total else -1
+        now = time.monotonic()
+        with self._lock:
+            previous = self._last_progress_log.get(job["uuid"])
+            if previous is not None and state == previous[1]:
+                if state not in {"transferring", "hashing", "verifying"}:
+                    return
+                if now - previous[0] < 5 and not (percent == 100 and previous[2] != 100):
+                    return
+            self._last_progress_log[job["uuid"]] = (now, state, percent)
+
+        filename = str((job.get("destination") or {}).get("filename") or "Model")
+        filename = "".join(char if char.isprintable() else "?" for char in filename)[:240]
+        if state == "completed":
+            if job.get("provider_verified") is not True:
+                log.warning(_LOG_PREFIX, f"{filename}: file could not be verified against the selected source")
+            elif job.get("conflict_result") == "skipped-existing":
+                log.info(_LOG_PREFIX, f"{filename}: download skipped; existing file verified")
+            else:
+                log.info(_LOG_PREFIX, f"{filename}: download finished and verified")
+        elif state == "failed":
+            log.error(_LOG_PREFIX, f"{filename}: download failed; see the queue error for details")
+        elif state == "cancelled":
+            log.info(_LOG_PREFIX, f"{filename}: download cancelled")
+        elif state in {"transferring", "hashing", "verifying"}:
+            label = {"transferring": "Downloading", "hashing": "Hashing", "verifying": "Verifying"}[state]
+            amount = f"{processed / (1024 * 1024):.1f} MiB"
+            if total:
+                amount = f"{percent}% ({processed / (1024 * 1024):.1f}/{total / (1024 * 1024):.1f} MiB)"
+            log.debug(_LOG_PREFIX, f"{label} {filename}: {amount}")
+        else:
+            log.debug(_LOG_PREFIX, f"{filename}: {state}")
+
     def _emit(self, job: dict[str, Any]) -> None:
+        self._log_job(job)
         try:
             from server import PromptServer  # type: ignore
 

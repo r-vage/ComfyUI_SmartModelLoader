@@ -1,4 +1,5 @@
 import { app, api } from './comfy/index.js';
+import { showSmartModelLoaderToast } from './smart-model-loader-notifications.js';
 import {
     applyComboChipColor,
     DEFAULT_COMBO_CHIP_COLOR,
@@ -10,13 +11,20 @@ const TOKEN_MASK = '••••••••';
 const CATEGORY = ['Smart Model Loader', 'General'];
 
 async function update(values) {
-    const response = await api.fetchApi(`${PREFIX}/update`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(values),
-    });
-    const payload = await response.json();
-    if (!response.ok || !payload.success) throw new Error(payload.error || 'Update failed');
+    try {
+        const response = await api.fetchApi(`${PREFIX}/update`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(values),
+        });
+        const payload = await response.json();
+        if (!response.ok || !payload.success) throw new Error(payload.error || 'Update failed');
+    } catch (error) {
+        const credential = 'hf_token' in values || 'civitai_api_key' in values;
+        showSmartModelLoaderToast('Setting update failed', credential
+            ? 'The credential could not be saved. Check the server log.' : error);
+        throw error;
+    }
 }
 
 function afterInitialChange(handler) {
@@ -36,9 +44,10 @@ app.registerExtension({
         let config = {};
         try {
             const response = await api.fetchApi(`${PREFIX}/all`);
-            if (response.ok) config = await response.json();
+            if (!response.ok) throw new Error(`Settings request failed (HTTP ${response.status}).`);
+            config = await response.json();
         } catch (error) {
-            console.error('[Smart Model Loader] Failed to read settings:', error);
+            showSmartModelLoaderToast('Could not read settings', error, 'warn');
         }
         const chipColor = applyComboChipColor(config.chip_color || DEFAULT_COMBO_CHIP_COLOR);
         const add = (setting) => appRef.ui.settings.addSetting(setting);

@@ -200,6 +200,18 @@ def is_debug_enabled() -> bool:
     return _get_log_level_value() >= _LOG_LEVELS["debug"]
 
 
+def _notify_execution(prefix: str, message: str, severity: str, notify: bool | str):
+    # Opt in only at reviewed user-facing warnings; keep diagnostic logs local.
+    if not notify:
+        return
+    try:
+        from .notifications import send_execution_notice
+
+        send_execution_notice(prefix, notify if isinstance(notify, str) else message, severity)
+    except Exception:  # Optional UI must not affect execution.
+        return
+
+
 class SmartModelLoaderLogger:
     # Centralized logger with log level filtering.
 
@@ -223,20 +235,22 @@ class SmartModelLoaderLogger:
             else:
                 cstr(message).msg.print()
 
-    def warning(self, prefix: str, message: str):
+    def warning(self, prefix: str, message: str, *, notify: bool | str = False):
         # Print warning message only when log_level is 'warning' or higher.
         if is_warning_enabled():
             if prefix.strip():
                 cstr(f"[WARNING {prefix}] {message}").msg.print()
             else:
                 cstr(f"[WARNING] {message}").msg.print()
+        _notify_execution(prefix, message, "warn", notify)
 
-    def error(self, prefix: str, message: str):
+    def error(self, prefix: str, message: str, *, notify: bool | str = False):
         # Print error message (always shown).
         if prefix.strip():
             cstr(f"[ERROR {prefix}] {message}").msg.print()
         else:
             cstr(f"[ERROR] {message}").msg.print()
+        _notify_execution(prefix, message, "error", notify)
 
     def msg(self, prefix: str, message: str):
         # Print regular message (always shown, not filtered by log level).

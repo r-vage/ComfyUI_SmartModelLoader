@@ -4,6 +4,7 @@
  */
 
 import { app, api } from './comfy/index.js';
+import { showSmartModelLoaderToast } from './smart-model-loader-notifications.js';
 
 const COMMAND_ID = 'SmartModelLoader.DownloadManager.Open';
 const SIDEBAR_TAB_ID = 'smart-model-loader-download-manager';
@@ -157,6 +158,7 @@ class DownloadManagerModal {
     setStatus(message, kind = '') {
         this.status.textContent = message;
         this.status.dataset.kind = kind;
+        if (kind === 'error' || kind === 'warn') showSmartModelLoaderToast('Download Manager', message, kind);
     }
 
     build() {
@@ -668,6 +670,27 @@ class DownloadManagerModal {
     updateJob(job) {
         this.queueJobRevisions.set(job.uuid, ++this.queueRevision);
         const index = this.jobs.findIndex(item => item.uuid === job.uuid);
+        const previous = index >= 0 ? this.jobs[index] : null;
+        if (job.state === 'failed' && (previous?.state !== 'failed' || previous?.error !== job.error
+            || previous?.completed_at !== job.completed_at)) {
+            showSmartModelLoaderToast('Download failed', `${job.destination?.filename || 'Model'}: ${job.error || 'Check the Download Manager for details.'}`,
+                'error', `download:${job.uuid}:${this.queueRevision}`);
+        }
+        if (!this.backdrop?.isConnected && job.state === 'completed'
+            && (previous?.state !== 'completed' || previous?.completed_at !== job.completed_at)) {
+            const filename = job.destination?.filename || 'Model';
+            const skipped = job.conflict_result === 'skipped-existing';
+            const context = `download:${job.uuid}:${this.queueRevision}`;
+            if (job.provider_verified !== true) {
+                showSmartModelLoaderToast('File not verified',
+                    `${filename}: ${skipped ? 'download skipped; the existing file' : 'the file'} could not be verified against the selected source.`,
+                    'warn', context);
+            } else {
+                showSmartModelLoaderToast(skipped ? 'Download skipped' : 'Download finished',
+                    skipped ? `${filename} already exists and matches the selected source.` : `${filename} is ready.`,
+                    skipped ? 'info' : 'success', context);
+            }
+        }
         if (index >= 0) this.jobs[index] = job; else this.jobs.push(job);
         if (!this.backdrop?.isConnected) return;
         this.pendingQueueJobs.add(job.uuid);

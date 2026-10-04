@@ -241,7 +241,7 @@ class RvTools_NunchakuPuLIDApply(io.ComfyNode):
                 all_embeddings.append(id_embedding)
 
         if not all_embeddings:
-            log.warning(_LOG_PREFIX, "No face detected in any of the images. Skipping PuLID.")
+            log.warning(_LOG_PREFIX, "No face detected in any of the images. Skipping PuLID.", notify=True)
             return io.NodeOutput(model)
 
         id_embeddings = torch.mean(torch.stack(all_embeddings), dim=0)

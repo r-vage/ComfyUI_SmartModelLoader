@@ -47,6 +47,7 @@ def _scale_cond_tensor(
         log.warning(
             "CLIPTextEncodeAdvanced",
             f"Conditioning shape {flat} is not divisible by weight count {n_layers}. Falling back to uniform scale.",
+            notify=True,
         )
         return t * multiplier
 
@@ -214,6 +215,7 @@ class RvCond_CLIPTextEncodeAdvanced(io.ComfyNode):
                 log.warning(
                     "CLIPTextEncodeAdvanced",
                     "Rebalancing is only supported for Krea2 models. Skipping rebalance and applying global multiplier only.",
+                    notify=True,
                 )
                 if effective_multiplier != 1.0:
                     conditioning = scale_conditioning(

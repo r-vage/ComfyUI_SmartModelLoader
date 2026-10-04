@@ -126,6 +126,7 @@ def _apply_lora_stack_standard(model, clip, lora_params):
                 log.warning(
                     _LOG_PREFIX,
                     f"LoRA '{lora_name}' has clip weight but no CLIP connected — applying to model only.",
+                    notify=True,
                 )
             model_lora, _ = comfy.sd.load_lora_for_models(model_lora, None, lora, strength_model, 0.0)
         else:
@@ -387,7 +388,7 @@ def _apply_lora_stack_nunchaku_zimage(model, clip, lora_params):
         lora_path = folder_paths.get_full_path("loras", lora_name)
 
         if lora_path is None:
-            log.warning(_LOG_PREFIX, f"LoRA file not found: {lora_name}")
+            log.warning(_LOG_PREFIX, f"LoRA file not found: {lora_name}", notify=True)
             continue
 
         # Load and apply the LoRA using ComfyUI's standard method
@@ -413,7 +414,10 @@ def _apply_lora_stack_nunchaku_zimage(model, clip, lora_params):
                 )
             lora_names_list.append(lora_name)
         except Exception as e:  # noqa: BLE001 - continue with the remaining stack entries
-            log.error(_LOG_PREFIX, f"Failed to load LoRA {lora_name}: {e!s}")
+            log.error(
+                _LOG_PREFIX, f"Failed to load LoRA {lora_name}: {e!s}",
+                notify="A LoRA could not be loaded and was skipped. See the server log for details.",
+            )
             continue
 
     # ZImage models may or may not have separate CLIP

@@ -117,6 +117,7 @@ class RvLoader_ClipLoader(io.ComfyNode):
                 else:
                     log.warning(
                         _LOG_PREFIX, f"CLIP file '{clip_name}' not found, skipping",
+                        notify=True,
                     )
 
         if not clip_paths:

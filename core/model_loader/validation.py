@@ -297,6 +297,7 @@ def _extension_allowed(extension: str, reference_type: str) -> bool:
         log.warning(
             _LOG_PREFIX,
             f"Administrator override permits legacy model format '{extension}'",
+            notify=True,
         )
         return True
     return False

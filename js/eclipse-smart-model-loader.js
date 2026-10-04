@@ -1,3 +1,4 @@
+import { showSmartModelLoaderToast } from './smart-model-loader-notifications.js';
 import {
     app,
     api
@@ -523,12 +524,12 @@ app.registerExtension({
                             body: JSON.stringify({ download_id: active.id }),
                         });
                         const cancelResult = await cancelResponse.json();
-                        if (!cancelResult?.success && cancelResponse.status !== 409) {
-                            console.warn('[Smart Model Loader] Download abort failed:', cancelResult?.error || 'Unknown error');
+                        if (!cancelResponse.ok || !cancelResult?.success) {
+                            showSmartModelLoaderToast('Download could not be cancelled', cancelResult?.error || 'The download may already be finishing.', 'warn');
                         }
                     } catch (error) {
                         active.cancelRequested = false;
-                        console.warn('[Smart Model Loader] Download abort request failed:', error);
+                        showSmartModelLoaderToast('Download cancellation failed', error, 'warn');
                     }
                     return;
                 }
@@ -553,7 +554,7 @@ app.registerExtension({
 
                     if (locatorValue) {
                         if (!locatorRole) {
-                            alert("Please select a target folder (Download Target Role) for the pasted AIR/SHA.");
+                            showSmartModelLoaderToast('Download target required', 'Select a Download Target Role for the pasted AIR/SHA.', 'warn');
                             return;
                         }
                         targetRole = locatorRole;
@@ -572,11 +573,11 @@ app.registerExtension({
                 }
 
                 if (!targetRole) {
-                    console.warn('[Smart Model Loader] No target role found for download.');
+                    showSmartModelLoaderToast('Download target required', 'Select a target role before downloading.', 'warn');
                     return;
                 }
                 if (!air && !sha256) {
-                    console.warn('[Smart Model Loader] No AIR/SHA found for download.');
+                    showSmartModelLoaderToast('Download source required', 'Provide an AIR or SHA-256 before downloading.', 'warn');
                     return;
                 }
 
@@ -612,15 +613,15 @@ app.registerExtension({
                         }),
                     });
                     const result = await resp.json();
-                    if (!result?.success) {
+                    if (!resp.ok || !result?.success) {
                         if (result?.status !== 'aborted') {
-                            console.error('[Smart Model Loader] Download failed:', result?.error || 'Unknown error');
+                            showSmartModelLoaderToast('Download failed', result?.error || 'Unknown error');
                         }
                         return;
                     }
 
                     if (result.unverified) {
-                        console.warn('[Smart Model Loader] Downloaded without hash verification \u2014 no expected SHA was available.');
+                        showSmartModelLoaderToast('Download not verified', 'No expected SHA-256 was available for comparison.', 'warn');
                     }
 
                     const resolvedName = normalizeRelative(result.filename || target) || target;
@@ -681,7 +682,7 @@ app.registerExtension({
                                 }
                             } catch (e) {
                                 // Fallback: promote failed — use the verified retry file directly.
-                                console.error('[Smart Model Loader] Promote failed, using retry file directly:', e);
+                                showSmartModelLoaderToast('Could not replace the original file; using the verified retry file', e);
                                 effectiveName = resolvedName;
                                 const wn = widgetMap[promoteRole];
                                 if (wn) {
@@ -752,7 +753,7 @@ app.registerExtension({
                     // Auto-save template to capture updated expected_hashes / sha256 after download.
                     await autoSaveTemplate(forceWidgets);
                 } catch (e) {
-                    console.error('[Smart Model Loader] Download request failed:', e);
+                    showSmartModelLoaderToast('Download request failed', e);
                 } finally {
                     node._Eclipse_dlProgress = null;
                     if (node._Eclipse_activeDownload?.id === downloadId) {
@@ -796,7 +797,8 @@ app.registerExtension({
                 const tmplName = gv('template_name');
                 if (action !== 'Load' || !tmplName || tmplName === 'None') return;
                 try {
-                    const existingData = await loadTemplateData(tmplName) || {};
+                    const existingData = await loadTemplateData(tmplName);
+                    if (!existingData) return;
                     const currentConfig = buildTemplateConfig();
 
                     const integrityFields = ['expected_hashes', 'download_locators'];
@@ -814,13 +816,15 @@ app.registerExtension({
                         }
                     }
 
-                    await api.fetchApi('/smart-model-loader/templates/save', {
+                    const response = await api.fetchApi('/smart-model-loader/templates/save', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ name: tmplName, config: existingData }),
                     });
+                    const result = await response.json();
+                    if (!response.ok || !result.success) throw new Error(result.error || 'Template auto-save failed');
                 } catch (e) {
-                    console.warn('[Smart Model Loader] Auto-save failed:', e);
+                    showSmartModelLoaderToast('Template auto-save failed', e, 'warn');
                 }
             };
 
@@ -855,7 +859,7 @@ app.registerExtension({
                     if (verifyOutcome === 'mismatch') {
                         setFileStatus(target, 'mismatch');
                         downloadButton.name = '✗ Hash mismatch';
-                        console.warn(`[Smart Model Loader] ${target}: expected ${result.expected}, got ${result.actual}`);
+                        showSmartModelLoaderToast('Hash mismatch', `${target}: expected ${result.expected}, got ${result.actual}`, 'warn');
                     } else if (result?.success) {
                         const s = verifyOutcome;
 
@@ -877,13 +881,15 @@ app.registerExtension({
                         } else if (s === 'no-expected' && result.actual) {
                             setFileStatus(target, 'hashed');
                             downloadButton.name = '✓ Hashed';
+                            showSmartModelLoaderToast('File hashed, not verified', 'No trusted expected SHA-256 is available for comparison.', 'warn');
                         } else {
                             downloadButton.name = s === 'no-expected' ? 'ⓘ No expected value'
                                 : s === 'missing' ? '✗ File missing'
                                     : 'ⓘ Unverifiable';
+                            showSmartModelLoaderToast('File could not be verified', `${target}: ${downloadButton.name}`, 'warn');
                         }
                     } else {
-                        console.error('[Smart Model Loader] Verify failed:', result?.error || 'Unknown error');
+                        showSmartModelLoaderToast('Verification failed', result?.error || 'Unknown error');
                         if (downloadButton) downloadButton.name = '✗ Verify error';
                     }
                     if (downloadButton && isVueMode()) notifyVue(node);
@@ -916,7 +922,7 @@ app.registerExtension({
                     }
                     await autoSaveTemplate(forceWidgets);
                 } catch (e) {
-                    console.error('[Smart Model Loader] Verify request failed:', e);
+                    showSmartModelLoaderToast('Verification request failed', e);
                     if (downloadButton) downloadButton.disabled = false;
                     updateVisibility();
                 }
@@ -1022,7 +1028,7 @@ app.registerExtension({
                     canvasDirtyBatcher.markDirty(node, true, true);
                     debouncedUpdate();
                 } catch (e) {
-                    console.warn('[Smart Model Loader] Failed to refresh model files:', e);
+                    showSmartModelLoaderToast('Could not refresh model files', e, 'warn');
                 }
             };
             const resetAllFields = () => {
@@ -1087,12 +1093,13 @@ app.registerExtension({
                 if (!name || name === 'None') return null;
                 try {
                     const ts = Date.now();
-                    const resp = await fetch(`/smart-model-loader/templates/${name}.json?t=${ts}`, {
+                    const resp = await fetch(`/smart-model-loader/templates/${encodeURIComponent(name)}.json?t=${ts}`, {
                         cache: 'no-store'
                     });
-                    if (resp.ok) return await resp.json();
+                    if (!resp.ok) throw new Error(`Template request failed (HTTP ${resp.status}).`);
+                    return await resp.json();
                 } catch (e) {
-                    console.error(`Failed to load template ${name}:`, e);
+                    showSmartModelLoaderToast(`Could not load template ${name}`, e);
                 }
                 return null;
             };
@@ -1225,10 +1232,10 @@ app.registerExtension({
                             sv('new_template_name', '');
                             updateVisibility();
                         } else {
-                            console.error(`[Smart Model Loader] Save failed: ${result.error}`);
+                            showSmartModelLoaderToast('Template save failed', result.error || 'Unknown error');
                         }
                     } catch (e) {
-                        console.error('[Smart Model Loader] Save request failed:', e);
+                        showSmartModelLoaderToast('Template save request failed', e);
                     }
                 }
             };
@@ -1241,6 +1248,7 @@ app.registerExtension({
                 let deleteModels = false;
                 try {
                     const getResp = await api.fetchApi(`/smart-model-loader/templates/${encodeURIComponent(tmplName)}.json`);
+                    if (!getResp.ok) throw new Error(`Template request failed (HTTP ${getResp.status}).`);
                     if (getResp.ok) {
                         const config = await getResp.json();
                         const modelFiles = [];
@@ -1268,7 +1276,7 @@ app.registerExtension({
                         }
                     }
                 } catch (e) {
-                    console.error('[Smart Model Loader] Failed to fetch template config for model list:', e);
+                    showSmartModelLoaderToast('Could not read associated model files', e, 'warn');
                 }
 
                 try {
@@ -1292,15 +1300,15 @@ app.registerExtension({
 
                         if (deleteModels && result.deleted_models && result.deleted_models.length > 0) {
                             const deletedList = result.deleted_models.map(f => f.split(/[/\\]/).pop());
-                            alert(`Deleted template "${tmplName}" and the following model files:\n\n` + deletedList.join('\n'));
+                            showSmartModelLoaderToast('Template deleted', `Deleted "${tmplName}" and model files:\n${deletedList.join('\n')}`, 'success');
                         } else {
-                            alert(`Deleted template "${tmplName}".`);
+                            showSmartModelLoaderToast('Template deleted', `Deleted "${tmplName}".`, 'success');
                         }
                     } else {
-                        alert(`Delete failed: ${result.error || 'Unknown error'}`);
+                        showSmartModelLoaderToast('Delete failed', result.error || 'Unknown error');
                     }
                 } catch (e) {
-                    alert(`Delete request failed: ${e.message || e}`);
+                    showSmartModelLoaderToast('Delete request failed', e);
                 }
             };
             const buildTemplateConfig = () => {

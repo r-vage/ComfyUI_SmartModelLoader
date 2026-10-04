@@ -82,7 +82,7 @@ def execute_smart_request(**kwargs):
             if isinstance(parsed_hashes, dict):
                 expected_hashes = parsed_hashes
         except (json.JSONDecodeError, TypeError, ValueError):
-            log.warning(_LOG_PREFIX, "expected_hashes is not valid JSON; ignoring.")
+            log.warning(_LOG_PREFIX, "expected_hashes is not valid JSON; ignoring.", notify=True)
 
     # Parsed for forward compatibility and template persistence; runtime use is handled in JS
     # + standalone CivitAI endpoint for locator-only (filename-free) requests.
@@ -228,6 +228,7 @@ def execute_smart_request(**kwargs):
             log.warning(
                 _LOG_PREFIX,
                 f"'{ckpt_name}' uses extension '{ext}'. Consider .safetensors for safety.",
+                notify=True,
             )
 
         if not os.access(ckpt_path, os.R_OK):
@@ -261,6 +262,7 @@ def execute_smart_request(**kwargs):
             log.warning(
                 _LOG_PREFIX,
                 f"'{nunchaku_name}' uses extension '{ext}'. Consider .safetensors.",
+                notify=True,
             )
 
         if not os.access(nunchaku_path, os.R_OK):
@@ -297,6 +299,7 @@ def execute_smart_request(**kwargs):
             log.warning(
                 _LOG_PREFIX,
                 f"'{qwen_name}' uses extension '{ext}'. Consider .safetensors.",
+                notify=True,
             )
 
         if not os.access(qwen_path, os.R_OK):
@@ -332,6 +335,7 @@ def execute_smart_request(**kwargs):
             log.warning(
                 _LOG_PREFIX,
                 f"'{zimage_name}' uses extension '{ext}'. Consider .safetensors.",
+                notify=True,
             )
 
         if not os.access(zimage_path, os.R_OK):
@@ -358,7 +362,7 @@ def execute_smart_request(**kwargs):
             raise FileNotFoundError(f"GGUF model not found: {gguf_name}")
 
         if not gguf_path.lower().endswith(".gguf"):
-            log.warning(_LOG_PREFIX, f"'{gguf_name}' doesn't have .gguf extension")
+            log.warning(_LOG_PREFIX, f"'{gguf_name}' doesn't have .gguf extension", notify=True)
 
         if not os.access(gguf_path, os.R_OK):
             raise RuntimeError(f"GGUF file not readable: {gguf_path}")
@@ -388,6 +392,7 @@ def execute_smart_request(**kwargs):
             log.warning(
                 _LOG_PREFIX,
                 f"'{unet_name}' uses extension '{ext}'. Consider .safetensors.",
+                notify=True,
             )
 
         if not os.access(unet_path, os.R_OK):
@@ -449,6 +454,7 @@ def execute_smart_request(**kwargs):
                 log.warning(
                     model_label,
                     "Quantized models don't contain baked CLIP - please use External CLIP",
+                    notify=True,
                 )
             elif ckpt_parts and ckpt_parts[1]:
                 base_clip = ckpt_parts[1]
@@ -460,6 +466,7 @@ def execute_smart_request(**kwargs):
             else:
                 log.warning(
                     _LOG_PREFIX, "Baked CLIP requested but not found in checkpoint",
+                    notify=True,
                 )
 
         else:
@@ -476,6 +483,7 @@ def execute_smart_request(**kwargs):
                         log.warning(
                             _LOG_PREFIX,
                             f"CLIP file '{clip_name}' not found, skipping",
+                            notify=True,
                         )
 
             # 'External + Model File': append the loaded model file so a baked
@@ -492,6 +500,7 @@ def execute_smart_request(**kwargs):
                             _LOG_PREFIX,
                             "GGUF model files can't be combined into CLIP loading; "
                             "ignoring model file. Use a standalone projection file instead.",
+                            notify=True,
                         )
                     else:
                         clip_paths.append(model_file_path)
@@ -504,6 +513,7 @@ def execute_smart_request(**kwargs):
                         _LOG_PREFIX,
                         "'External + Model File' selected but no Standard Checkpoint / "
                         "UNet file is available to combine with CLIP",
+                        notify=True,
                     )
 
             if not clip_paths:
@@ -543,6 +553,7 @@ def execute_smart_request(**kwargs):
                     log.warning(
                         "Nunchaku",
                         "Nunchaku models don't contain baked VAE - please enable 'vae' feature and use External VAE",
+                        notify=True,
                     )
             elif ckpt_parts and ckpt_parts[2]:
                 loaded_vae = ckpt_parts[2]
@@ -555,11 +566,12 @@ def execute_smart_request(**kwargs):
                     )
                 log.warning(
                     _LOG_PREFIX, "Baked VAE requested but not found in model",
+                    notify=True,
                 )
 
         elif configure_vae and not use_baked_vae:
             if vae_name in (None, "", "None"):
-                log.warning(_LOG_PREFIX, "External VAE requested but none selected")
+                log.warning(_LOG_PREFIX, "External VAE requested but none selected", notify=True)
             else:
                 loaded_vae = load_custom_vae(vae_name)
 

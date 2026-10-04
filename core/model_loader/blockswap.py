@@ -163,7 +163,7 @@ def make_swap_callback(blocks_to_swap: int, offload_embeddings: bool):
 
         groups = detect_block_groups(diffusion_model)
         if not groups:
-            log.warning(_LOG_PREFIX, "No transformer block lists detected — skipping")
+            log.warning(_LOG_PREFIX, "No transformer block lists detected — skipping", notify=True)
             return
         first_block = next(iter_blocks(groups[0][1]))[1]
         first_parameter = next(first_block.parameters(), None)
@@ -240,7 +240,7 @@ def apply_blockswap(
     total = count_blocks(groups)
     architecture = get_model_arch_name(model)
     if total == 0:
-        log.warning(log_prefix, f"BlockSwap: {architecture} has no recognized block structure — skipping")
+        log.warning(log_prefix, f"BlockSwap: {architecture} has no recognized block structure — skipping", notify=True)
         return model
 
     actual = min(blocks_to_swap, total)

@@ -437,12 +437,14 @@ def verify_primary_model_integrity(
                 _LOG_PREFIX,
                 f"No trusted expected SHA-256 for {primary.path.name}; "
                 "recorded a local baseline and continued",
+                notify=True,
             )
         else:
             log.warning(
                 _LOG_PREFIX,
                 f"No trusted expected SHA-256 for {primary.path.name}; "
                 "continuing without a digest comparison",
+                notify=True,
             )
         return
     if result["status"] != "ok":
