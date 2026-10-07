@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-10-07
+
+### Version: 1.0.26
+
+- **Fix**
+  - Silently skip Krea2-only layer rebalancing for non-Krea2 models in Advanced CLIP Text Encode, removing the console warning and popup while preserving multiplier behavior.
+
+**Changed files:**
+- `Readme/Nunchaku_PuLID_CUDA_Troubleshooting.md`
+- `py/RvCond_CLIPTextEncodeAdvanced.py`
+- `pyproject.toml`
+
 ## 2026-10-04
 
 ### Version: 1.0.25

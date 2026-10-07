@@ -212,11 +212,6 @@ class RvCond_CLIPTextEncodeAdvanced(io.ComfyNode):
         # 2. Check if rebalancing/scaling is needed
         if rebalance_preset != "none":
             if not is_krea2:
-                log.warning(
-                    "CLIPTextEncodeAdvanced",
-                    "Rebalancing is only supported for Krea2 models. Skipping rebalance and applying global multiplier only.",
-                    notify=True,
-                )
                 if effective_multiplier != 1.0:
                     conditioning = scale_conditioning(
                         conditioning, effective_multiplier, None, False,

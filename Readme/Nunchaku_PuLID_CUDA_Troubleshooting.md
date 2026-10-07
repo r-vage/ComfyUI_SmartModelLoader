@@ -122,13 +122,12 @@ the stable Nunchaku package and the `1.3.0.dev20260306` nightly. The nightly mov
 that class out of the legacy `nunchaku.models.qwenimage` module; without this
 adapter, Nunchaku Qwen loading appears unavailable even though Flux still works.
 
-The following remaining messages do not indicate a failed PuLID generation:
+Krea2-only layer rebalancing is silently skipped for non-Krea2 models. The global
+multiplier still applies unless `krea2_only_multiplier` is enabled.
 
-- `Rebalancing is only supported for Krea2 models` means a Krea2-only rebalance
-  preset reached a non-Krea model. Use the global multiplier alone for Flux.
-- `No selection confirmed` followed by `Processing interrupted` is the expected
-  Image Selector pause when no image has been confirmed; it is unrelated to
-  PuLID or CUDA.
+`No selection confirmed` followed by `Processing interrupted` is the expected
+Image Selector pause when no image has been confirmed. It does not indicate a
+failed PuLID generation and is unrelated to CUDA.
 
 With **CPU** selected for `insight_face_provider`, the face-analysis ONNX models
 run on the CPU while the PuLID and Flux torch modules can still use CUDA. The log
