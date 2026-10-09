@@ -34,6 +34,29 @@ export function resetModelSamplingFields(setValue) {
     }
 }
 
+export function applyModelSamplingDefaults(samplingMethod, getValue, setValue) {
+    const defaults = {
+        SD3: 3,
+        AuraFlow: 1.73,
+        Flux: 1.15,
+        'Qwen Image 2.1': 0.9,
+        'Stable Cascade': 2,
+        LTXV: 2.05,
+    };
+    const currentShift = getValue('shift');
+    if (Object.values(defaults).some(value => Math.abs(currentShift - value) < 0.01)
+        && defaults[samplingMethod] !== undefined) {
+        setValue('shift', defaults[samplingMethod]);
+    }
+    if (samplingMethod === 'ContinuousEDM') {
+        setValue('sigma_max', 120);
+        setValue('sigma_min', 0.002);
+    } else if (samplingMethod === 'ContinuousV') {
+        setValue('sigma_max', 500);
+        setValue('sigma_min', 0.03);
+    }
+}
+
 export function applyModelSamplingTemplate(data, setValue) {
     for (const name of MODEL_SAMPLING_FIELDS) {
         if (data[name] !== undefined) setValue(name, data[name]);
@@ -50,10 +73,10 @@ export function buildModelSamplingTemplate(getValue) {
     }
 
     config.shift = getValue('shift');
-    if (samplingMethod === 'Flux' || samplingMethod === 'LTXV') {
+    if (['Flux', 'Qwen Image 2.1', 'LTXV'].includes(samplingMethod)) {
         config.base_shift = getValue('base_shift');
     }
-    if (samplingMethod === 'Flux') {
+    if (samplingMethod === 'Flux' || samplingMethod === 'Qwen Image 2.1') {
         config.sampling_width = getValue('sampling_width');
         config.sampling_height = getValue('sampling_height');
     } else if (samplingMethod === 'LCM') {
@@ -71,7 +94,7 @@ export function buildModelSamplingTemplate(getValue) {
 }
 
 export function getModelSamplingVisibility(enabled, samplingMethod, hasLatent) {
-    const isFlux = samplingMethod === 'Flux';
+    const hasResolutionShift = samplingMethod === 'Flux' || samplingMethod === 'Qwen Image 2.1';
     const isLTXV = samplingMethod === 'LTXV';
     const isLCM = samplingMethod === 'LCM';
     const isContinuousEdm = samplingMethod === 'ContinuousEDM';
@@ -82,9 +105,9 @@ export function getModelSamplingVisibility(enabled, samplingMethod, hasLatent) {
         shift_video: enabled && isMiniMaxH3,
         shift_audio: enabled && isMiniMaxH3,
         shift: enabled && samplingMethod !== 'None' && !isLCM && !isContinuous && !isMiniMaxH3,
-        base_shift: enabled && (isFlux || isLTXV),
-        sampling_width: enabled && isFlux && !hasLatent,
-        sampling_height: enabled && isFlux && !hasLatent,
+        base_shift: enabled && (hasResolutionShift || isLTXV),
+        sampling_width: enabled && hasResolutionShift && !hasLatent,
+        sampling_height: enabled && hasResolutionShift && !hasLatent,
         original_timesteps: enabled && isLCM,
         zsnr: enabled && isLCM,
         sampling_subtype: enabled && isContinuousEdm,

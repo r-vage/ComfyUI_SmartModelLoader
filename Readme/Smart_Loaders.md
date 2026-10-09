@@ -345,6 +345,7 @@ Enable the **model_sampling** chip to configure architecture-specific sampling m
 | SD3 | Stable Diffusion 3 | shift |
 | AuraFlow | AuraFlow models | shift |
 | Flux | Flux Dev/Schnell/variants | shift, base_shift, width, height |
+| Qwen Image 2.1 | Qwen Image 2.1 diffusion models | shift (max_shift), base_shift, width, height |
 | Stable Cascade | Stable Cascade | shift |
 | LCM | Distilled/few-step models | original_timesteps, zsnr |
 | ContinuousEDM | EDM-based models | subtype, sigma_max, sigma_min |
@@ -353,6 +354,97 @@ Enable the **model_sampling** chip to configure architecture-specific sampling m
 | MiniMax H3 | MiniMax H3 audio-video models | shift_video, shift_audio |
 
 MiniMax H3 uses separate flow shifts for its packed video and audio streams. `shift_video` defaults to `12.0` and controls the sampler sigma schedule; `shift_audio` defaults to `3.0` and controls the corresponding audio schedule. Both accept values from `0.01` to `100.0`. The bundled MiniMaxH3 loader template leaves model sampling disabled, so enable the **model_sampling** chip and select **MiniMax H3** when this override is wanted.
+
+### Qwen Image 2.1 Shift
+
+In **Smart Model Loader**, **Model Loader**, or **Model Loader Pipe**, enable
+**model_sampling** and select **Qwen Image 2.1**. The model output carries the
+sampling patch, so connect it to your existing KSampler; the text encoder needs
+no changes. This mode validates the loaded architecture and is specific to 2.1.
+
+- `shift` is the maximum-anchor shift at 8192 image tokens; the published value
+  is **0.9**. Selecting the method replaces a standard shift preset with 0.9,
+  while preserving a custom value.
+- `base_shift` is the shift at 256 image tokens; the published value is **0.5**.
+- `sampling_width` and `sampling_height` must match the actual output latent.
+  Smart Model Loader uses its configured latent dimensions when **latent** is
+  enabled and hides the redundant sampling dimensions. With an external latent,
+  enter its output pixel dimensions here, including for image edits.
+
+The patch uses `N = (width // 16) * (height // 16)` and
+`mu = base_shift + (shift - base_shift) * (N - 256) / (8192 - 256)`.
+The reference values yield approximately **0.69355** at 1024×1024 and **1.31290**
+at 2048×2048. The formula extrapolates above 8192 tokens. Set both shift values
+to **0.69** for ComfyUI's current fixed shift, or tune them to compare results.
+Higher shifts can expose the grid artifacts discussed in
+[ComfyUI issue #16447](https://github.com/Comfy-Org/ComfyUI/issues/16447).
+
+This mode changes the model shift only. It does **not** apply the reference
+scheduler's terminal stretch to 0.02, and explicit custom SIGMAS bypass the
+model's generated schedule. Use **Qwen Image 2.1 Scheduler** below for the
+reference sigma schedule, including terminal stretching.
+Existing workflows and templates keep their current sampling mode until changed.
+
+### Qwen Image 2.1 Scheduler
+
+See the [visual tour](../README.md#schedule-qwen-image-21) for annotated controls
+and a custom-sampler wiring example.
+
+Find **Qwen Image 2.1 Scheduler** under **Smart Model Loader → Sampler**. It
+produces `SIGMAS` directly and adds the same tensor to its output `PIPE` without
+mutating the input pipe. The loader's model-sampling override is optional for
+this path: explicit SIGMAS supply the schedule directly, so shifts are applied once.
+
+```text
+Smart Model Loader PIPE → Qwen Image 2.1 Scheduler PIPE → IO Checkpoint Loader
+                                                           └─ sigmas → SamplerCustomAdvanced
+```
+
+Connect the IO node's `model` to a `CFGGuider` and its `latent` to the custom
+sampler's `latent_image`. Supply the guider's positive/negative conditioning,
+`RandomNoise`, and `KSamplerSelect` as usual. The scheduler's direct `sigmas`
+output can also feed the custom sampler, or the IO node's new final `sigmas`
+input. IO's new SIGMAS sockets follow `denoise`; existing socket indices stay
+unchanged.
+
+For image edits, connect the text encoder's target `latent` to the scheduler.
+Image size comes from that latent first, then the pipe's latent, then pipe
+`width`/`height`, then the scheduler's fallback width/height widgets (1024×1024).
+The Qwen 2.1 target has 64 channels and one token per latent spatial position,
+equivalent to a 16×16 output-pixel area. Reference-image tokens are not counted.
+Standard **EmptyLatentImage** is also supported: its zero-filled 4-channel
+placeholder is converted by ComfyUI before sampling. The scheduler uses its
+`downscale_ratio_spacial` metadata and ComfyUI's rounding to calculate the same
+target size, while preserving the original latent for the sampler. Connect the
+same latent to both nodes. Non-empty encoded image latents must have Qwen's 64
+channels. The loader's **latent** and **model_sampling** chips can remain disabled
+when using an external empty latent and this scheduler.
+
+| Control | Default | Meaning |
+| --- | --- | --- |
+| `base_image_seq_len` | 256 | Lower image-token anchor |
+| `base_shift` | 0.5 | Dynamic shift at the lower anchor |
+| `max_image_seq_len` | 8192 | Upper anchor; larger images extrapolate |
+| `max_shift` | 0.9 | Dynamic shift at the upper anchor |
+| `use_dynamic_shifting` | true | Derive the shift from target image size |
+| `time_shift_type` | exponential | Dynamic transform; linear is also available |
+| `shift_terminal` | 0.02 | Last positive sigma before the final zero; 0 disables stretching |
+| `num_train_timesteps` | 1000 | Training timestep units; cancel out in normalized inference SIGMAS |
+| `shift` | 1.0 | Fixed multiplicative shift when dynamic shifting is disabled |
+
+Set **steps** (default 40) and **denoise** (default 1.0) on this scheduler; these
+values replace the corresponding output pipe fields. To reuse loader values,
+connect an upstream IO Checkpoint Loader's **steps** and **denoise** outputs to
+the matching scheduler inputs; the input PIPE alone does not supply them.
+Reduced denoise keeps the final steps of a longer shifted and stretched schedule,
+matching ComfyUI's scheduler convention. Denoise 0 returns an empty schedule; a
+single full-denoise step returns `[1, 0]` without attempting to stretch a
+nonexistent interval.
+
+Defaults follow the [Qwen Image 2.1 scheduler configuration](https://huggingface.co/Qwen/Qwen-Image-2.1/blob/main/scheduler/scheduler_config.json).
+The normalized inference grid runs from 1 to `1/steps`, followed by shifting,
+terminal stretching and a final zero. Changing `num_train_timesteps` alone does
+not change these normalized sigmas. This node requires no Diffusers installation.
 
 ### Flux Dimension Calculation
 

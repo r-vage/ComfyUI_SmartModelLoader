@@ -147,6 +147,7 @@ _ENUMS = {
         "SD3",
         "AuraFlow",
         "Flux",
+        "Qwen Image 2.1",
         "Stable Cascade",
         "LCM",
         "ContinuousEDM",

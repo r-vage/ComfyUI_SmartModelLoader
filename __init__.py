@@ -49,6 +49,7 @@ class SmartModelLoaderExtension(ComfyExtension):
         from .py.RvLoader_VaeLoaderVideoAudio import RvLoader_VaeLoaderVideoAudio
         from .py.RvPipe_IO_CheckpointLoader import RvPipe_IO_CheckpointLoader
         from .py.RvSampler_KSamplerPipe import RvSampler_KSamplerPipe
+        from .py.RvSampler_QwenImage21Scheduler import RvSampler_QwenImage21Scheduler
         from .py.RvTools_LoraStack import RvTools_LoraStack
         from .py.RvTools_LoraStack_Apply import RvTools_LoraStack_Apply
 
@@ -79,6 +80,7 @@ class SmartModelLoaderExtension(ComfyExtension):
             RvSampler_KSamplerPipe,
             RvTools_LoraStack,
             RvTools_LoraStack_Apply,
+            RvSampler_QwenImage21Scheduler,
         ]
 
         if nunchaku_pulid_available:

@@ -1,8 +1,8 @@
 # Pipeline Nodes
 
 Smart Model Loader includes the complete loader → conditioning → sampling path.
-All published node IDs retain their historical `[Eclipse]` suffix so existing
-workflows save and reload without replacement. The nodes appear under the
+Existing node IDs retain their historical `[Eclipse]` suffix so workflows save
+and reload without replacement. New nodes use `[Smart Model Loader]`. The nodes appear under the
 top-level `Smart Model Loader` menu.
 
 ## Text conditioning
@@ -32,6 +32,19 @@ dimension, name, and seed field in stable socket order. Missing values remain
 `None`. When dimensions are absent, a latent supplies width and height using its
 spatial downscale ratio (8 by default).
 
+`sigmas` is the final optional input and output, after `denoise`. It accepts
+`SIGMAS` from any compatible scheduler, stores them in the returned pipe and
+exposes them for `SamplerCustomAdvanced` or other custom samplers. A connected
+`sigmas` input overrides the pipe's schedule. Earlier sockets keep their indices.
+
+`Qwen Image 2.1 Scheduler [Smart Model Loader]` creates a resolution-dependent
+schedule with configurable shift anchors, exponential or linear shifting, and
+terminal stretching. It returns `PIPE` and `SIGMAS`; the optional pipe supplies
+the target latent or pixel dimensions, and a directly connected target latent
+takes precedence. Set sampling steps and denoise on the scheduler itself. See
+[Qwen Image 2.1 Scheduler](Smart_Loaders.md#qwen-image-21-scheduler) for defaults
+and wiring.
+
 `Eclipse KSampler (Pipe) [Eclipse]` consumes the model and VAE from a `PIPE`,
 plus positive and negative conditioning. A directly connected image is
 VAE-encoded in preference to a latent; otherwise direct values fall back to pipe
@@ -40,6 +53,8 @@ Seeds `-1`, `-2`, and `-3` provide random, increment, and decrement queue-time
 behavior. The node supports standard or tiled VAE encode/decode and can show or
 hide both live and final previews. Its output is a copied pipe containing the
 sampled latent, decoded image, dimensions, conditioning, and resolved settings.
+It generates its own schedule from its scheduler setting. To use explicit pipe
+`SIGMAS`, extract them with IO Checkpoint Loader and connect a custom sampler.
 
 ## LoRA Stack and Nunchaku PuLID
 

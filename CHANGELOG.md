@@ -1,5 +1,40 @@
 # Changelog
 
+## 2026-10-09
+
+### Version: 1.0.27
+
+- **Feat**
+  - Add Qwen Image 2.1 model sampling to Smart Model Loader, Model Loader, and Model Loader Pipe, with visible shift, base-shift, and output-resolution controls. Apply Qwen's resolution-dependent shift to the model used by the sampler.
+  - Add Qwen Image 2.1 Scheduler with configurable sequence-length anchors, shift values, dynamic exponential or linear shifting, terminal stretching, training timestep units, and denoise. Output SIGMAS directly and through a copied PIPE using the target latent or image dimensions.
+  - Append optional SIGMAS input and output sockets to IO Checkpoint Loader, allowing custom schedules to travel through the pipe while preserving every existing socket index.
+
+- **Fix**
+  - Use Smart Model Loader's latent dimensions for Qwen Image 2.1 shifts when latent creation is enabled, allow 2048-pixel and larger sampling dimensions, and preserve Qwen shift settings in templates and saved workflows.
+  - Accept generic zero-filled empty latents in Qwen Image 2.1 Scheduler and derive image tokens using ComfyUI's spatial conversion, allowing standard EmptyLatentImage without loader-generated latents. Keep format checks for encoded image latents.
+
+- **Docs**
+  - Explain Qwen Image 2.1 reference and fixed-shift values, target-size requirements, scheduler controls, and SIGMAS pipe wiring for custom samplers.
+  - Add an annotated Qwen Image 2.1 Scheduler visual tour covering shift controls, shared target latents, conditioning, and custom-sampler connections.
+
+**Changed files:**
+- `README.md`
+- `Readme/Pipeline_Nodes.md`
+- `Readme/Smart_Loaders.md`
+- `Readme/assets/qwen-image21-scheduler-controls.png`
+- `Readme/assets/qwen-image21-scheduler-wiring.png`
+- `core/model_loader/qwen_scheduler.py`
+- `core/model_loader/smart.py`
+- `core/model_loader/validation.py`
+- `core/model_loader_common.py`
+- `js/eclipse-model-loader.js`
+- `js/eclipse-smart-model-loader.js`
+- `js/smart-model-loader-model-sampling.js`
+- `py/RvLoader_SmartModelLoader.py`
+- `py/RvPipe_IO_CheckpointLoader.py`
+- `py/RvSampler_QwenImage21Scheduler.py`
+- `pyproject.toml`
+
 ## 2026-10-07
 
 ### Version: 1.0.26

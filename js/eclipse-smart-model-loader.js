@@ -35,6 +35,7 @@ import {
 } from './smart-model-loader-integrity-flow.js';
 import { migrateLegacySmartLoaderWidgetValues } from './smart-model-loader-widget-migration.js';
 import {
+    applyModelSamplingDefaults,
     applyModelSamplingTemplate,
     buildModelSamplingTemplate,
     getModelSamplingVisibility,
@@ -51,7 +52,7 @@ const FEATURE_OPTIONS = [
     { label: 'latent', tooltip: 'Toggle visibility of empty latent resolution presets, custom sizing, and batch size controls' },
     { label: 'sampler', tooltip: 'Toggle visibility of ComfyUI KSampler algorithms, schedulers, steps, CFG, denoise, and Flux guidance scales' },
     { label: 'lora', tooltip: 'Toggle visibility of LoRA slots (enable switches, files, and weights)' },
-    { label: 'model_sampling', tooltip: 'Toggle model-level scheduling curves, including MiniMax H3 video/audio shifts' },
+    { label: 'model_sampling', tooltip: 'Show model shifts, including Qwen Image 2.1 resolution-dependent shifts and MiniMax H3 video/audio shifts' },
     { label: 'block_swap', tooltip: 'Toggle visibility of block-swapping memory managers (offload transformer layers to CPU RAM to save VRAM)' },
     { label: 'memory_cleanup', tooltip: 'VRAM garbage collection — clear VRAM cache and run Python garbage collection before model loading' },
     { label: 'integrity', tooltip: 'Toggle visibility of file verification methods and CivitAI AIR automatic downloads' },
@@ -1793,26 +1794,8 @@ app.registerExtension({
                             }
                         }
                     }
-                    if (wName === 'sampling_method') {
-                        const sm = gv('sampling_method');
-                        const curShift = gv('shift');
-                        const defaults = {
-                            SD3: 3,
-                            AuraFlow: 1.73,
-                            Flux: 1.15,
-                            'Stable Cascade': 2,
-                            LTXV: 2.05
-                        };
-                        if ((Object.values(defaults).some(v => Math.abs(curShift - v) < 0.01) || curShift === 3) && defaults[sm]) {
-                            sv('shift', defaults[sm]);
-                        }
-                        if (sm === 'ContinuousEDM') {
-                            sv('sigma_max', 120);
-                            sv('sigma_min', 0.002);
-                        } else if (sm === 'ContinuousV') {
-                            sv('sigma_max', 500);
-                            sv('sigma_min', 0.03);
-                        }
+                    if (wName === 'sampling_method' && !isLoadingTemplate && !isConfiguringGraph()) {
+                        applyModelSamplingDefaults(gv('sampling_method'), gv, sv);
                     }
                     debouncedUpdate(true);
                 };

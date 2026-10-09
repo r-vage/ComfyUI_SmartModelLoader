@@ -6,7 +6,7 @@ from ..core import CATEGORY
 
 DEFAULT_DOWNSCALE = 8
 
-# IO Checkpoint Loader — adds an `audio_vae` output (LTXV/LTX2) after `vae`.
+# Append new fields to preserve every existing input/output slot index.
 #
 # Data-driven field definitions: key → (display_name, type_str, return_name)
 _all_context_input_output_data = {
@@ -30,6 +30,7 @@ _all_context_input_output_data = {
     "lora_names": ("lora_names", "STRING", "lora_names"),
     "seed": ("seed", "INT", "seed"),
     "denoise": ("denoise", "FLOAT", "denoise"),
+    "sigmas": ("sigmas", "SIGMAS", "sigmas"),
 }
 
 _force_input_types = {"INT", "STRING", "FLOAT", "BOOLEAN"}
@@ -43,6 +44,7 @@ def _get_v3_type(type_str) -> Any:
         "CLIP": getattr(io, "Clip", None) or io.Custom("CLIP"),
         "VAE": getattr(io, "Vae", None) or io.Custom("VAE"),
         "LATENT": getattr(io, "Latent", None) or io.Custom("LATENT"),
+        "SIGMAS": getattr(io, "Sigmas", None) or io.Custom("SIGMAS"),
         "INT": getattr(io, "Int", None) or io.Custom("INT"),
         "FLOAT": getattr(io, "Float", None) or io.Custom("FLOAT"),
         "STRING": getattr(io, "String", None) or io.Custom("STRING"),
@@ -105,7 +107,7 @@ class RvPipe_IO_CheckpointLoader(io.ComfyNode):
             node_id="IO Checkpoint Loader [Eclipse]",
             display_name="IO Checkpoint Loader",
             category=CATEGORY.MAIN.value + CATEGORY.PIPE.value,
-            description="Checkpoint loader pipe IO with an additional audio_vae output (LTXV/LTX2).",
+            description="Read or update a loader pipe, including audio VAE and custom SIGMAS for custom samplers.",
             inputs=_build_v3_inputs(),
             outputs=_build_v3_outputs(),
         )

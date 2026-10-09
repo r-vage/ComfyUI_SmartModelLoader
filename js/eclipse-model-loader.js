@@ -15,6 +15,10 @@ import {
 import {
     fetchSharedModelFiles
 } from './eclipse-loader-shared.js';
+import {
+    applyModelSamplingDefaults,
+    getModelSamplingVisibility,
+} from './smart-model-loader-model-sampling.js';
 const NODE_CONFIGS = {
     'Model Loader [Eclipse]': {
         extName: 'SmartModelLoader.ModelLoader',
@@ -178,22 +182,11 @@ for (const [nodeName, cfg] of Object.entries(NODE_CONFIGS)) {
                         d(`lora_name_${i}`, switchOn);
                         d(`lora_weight_${i}`, switchOn);
                     }
-                    d('sampling_method', hasModelSampling);
-                    const isFlux = samplingMethod === 'Flux';
-                    const isLTXV = samplingMethod === 'LTXV';
-                    const isLCM = samplingMethod === 'LCM';
-                    const isContinuousEDM = samplingMethod === 'ContinuousEDM';
-                    const isContinuousV = samplingMethod === 'ContinuousV';
-                    const isContinuous = isContinuousEDM || isContinuousV;
-                    d('shift', hasModelSampling && samplingMethod !== 'None' && !isLCM && !isContinuous);
-                    d('base_shift', hasModelSampling && (isFlux || isLTXV));
-                    d('sampling_width', hasModelSampling && isFlux);
-                    d('sampling_height', hasModelSampling && isFlux);
-                    d('original_timesteps', hasModelSampling && isLCM);
-                    d('zsnr', hasModelSampling && isLCM);
-                    d('sampling_subtype', hasModelSampling && isContinuousEDM);
-                    d('sigma_max', hasModelSampling && isContinuous);
-                    d('sigma_min', hasModelSampling && isContinuous);
+                    for (const [name, visible] of Object.entries(
+                        getModelSamplingVisibility(hasModelSampling, samplingMethod, false),
+                    )) {
+                        d(name, visible);
+                    }
                     d('blocks_to_swap', hasBlockSwap);
                     d('offload_embeddings', hasBlockSwap);
                     vis.resizeIfChanged(vis.setVisibleBatch(entries, { userDriven }));
@@ -214,6 +207,12 @@ for (const [nodeName, cfg] of Object.entries(NODE_CONFIGS)) {
                         const orig = w.callback;
                         w.callback = function () {
                             orig && orig.apply(this, arguments);
+                            if (wName === 'sampling_method' && !isConfiguringGraph()) {
+                                applyModelSamplingDefaults(g('sampling_method'), g, (name, value) => {
+                                    const widget = node.widgets?.find(item => item.name === name);
+                                    if (widget) widget.value = value;
+                                });
+                            }
                             debouncedUpdate(true);
                         };
                     }

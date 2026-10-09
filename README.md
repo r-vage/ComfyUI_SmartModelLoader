@@ -4,7 +4,7 @@ A complete, pipe-first diffusion workflow for ComfyUI: load models, build text
 conditioning, sample, decode, and acquire verified model files without turning
 your canvas into a wall of connections.
 
-Smart Model Loader includes sixteen Nodes 2.0-ready nodes, including the
+Smart Model Loader includes Nodes 2.0-ready nodes, including the
 workflow-compatible LoRA Stack and Nunchaku PuLID tools. ComfyUI Eclipse is
 optional.
 
@@ -116,6 +116,44 @@ precedence, tiled VAE decode, preview modes, and queue-time seed controls.
 
 ![Annotated IO Checkpoint Loader and Eclipse KSampler Pipe controls](Readme/assets/pipe-sampling.png)
 
+### Schedule Qwen Image 2.1
+
+Find **Qwen Image 2.1 Scheduler** under **Smart Model Loader → Sampler**.
+Use it in place of **BasicScheduler** when you want the Qwen shift anchors and
+terminal stretch. It generates `SIGMAS` for a custom sampler; the connected
+target latent supplies the image size, so no model input is needed here.
+
+![Annotated Qwen Image 2.1 Scheduler showing steps, denoise, target size, dynamic shift anchors, terminal stretching, and fixed shift](Readme/assets/qwen-image21-scheduler-controls.png)
+
+Set **steps** and **denoise** here, or connect those inputs from IO Checkpoint
+Loader. They are not inherited automatically from the input PIPE. Dynamic mode
+uses the image size and the **256 / 0.5** and **8192 / 0.9** anchors; the default
+transform is **exponential**. **shift_terminal = 0.02** sets the last positive
+sigma before the final zero. Turn off dynamic shifting to use the separate
+**shift** control. See the [complete controls and defaults](Readme/Smart_Loaders.md#qwen-image-21-scheduler).
+
+#### Connect the custom sampler
+
+The example below starts at your configured loader's **IO Checkpoint Loader**.
+Prompt strings feed **Text Encode Qwen Image 2.1**; its positive and negative
+outputs go to **CFGGuider**, together with the IO node's model. **RandomNoise**
+supplies the seed, and **KSamplerSelect** chooses the sampling algorithm.
+
+![Annotated Qwen Image 2.1 custom-sampler connections showing separate conditioning, SIGMAS, and a shared EmptyLatentImage](Readme/assets/qwen-image21-scheduler-wiring.png)
+
+- Connect the scheduler's **sigmas** output to **SamplerCustomAdvanced → sigmas**.
+- Send the **same target latent** to the scheduler's **latent** and the sampler's
+  **latent_image**. The pictured **EmptyLatentImage** is supported. For image
+  edits, use the Qwen encoder's target latent in both places instead.
+- The pictured IO **steps** and **denoise** outputs drive the scheduler inputs.
+  With those links removed, the scheduler's own widgets control the schedule.
+- To carry the result through a PIPE, connect **Qwen Scheduler → PIPE → a
+  downstream IO Checkpoint Loader**, then use that IO node's final **sigmas**
+  output. IO only passes an existing schedule; it does not create one.
+
+The loader's **latent** and **model_sampling** chips can stay off in this setup.
+The loader's scheduler dropdown does not control these explicit SIGMAS.
+
 ### Acquire exact model files
 
 Open **Download Manager (Beta)** from the Smart Model Loader menu. Inspect a
@@ -141,13 +179,14 @@ choose their registered model destinations, and monitor the persistent queue.
 | Conditioning | `Conditioning Zero Out [Eclipse]` | Clear and optionally truncate conditioning |
 | Pipe | `IO Checkpoint Loader [Eclipse]` | Merge, override, and expose checkpoint PIPE values |
 | Sampler | `Eclipse KSampler (Pipe) [Eclipse]` | Sample, VAE-decode, preview, and update the PIPE |
+| Sampler | `Qwen Image 2.1 Scheduler [Smart Model Loader]` | Build shifted, terminal-stretched SIGMAS and optionally add them to a PIPE |
 | Tools | `Lora Stack [Eclipse]` | Build a reusable stack of up to ten LoRAs |
 | Tools | `Lora Stack apply [Eclipse]` | Apply a stack to standard or Nunchaku Flux, Qwen, and ZImage models |
 | Loader | `Nunchaku PuLID Loader [Eclipse]` | Load a PuLID pipeline for a Nunchaku Flux model |
 | Tools | `Nunchaku PuLID Apply [Eclipse]` | Apply PuLID identity guidance to a Nunchaku Flux model |
 
 The `[Eclipse]` suffixes are compatibility identifiers. Smart Model Loader owns
-all sixteen implementations and does not require Eclipse at runtime. The two
+these implementations and does not require Eclipse at runtime. The two
 PuLID nodes are available when the compatible `nunchaku` Python package and its
 PuLID dependencies are installed.
 

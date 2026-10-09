@@ -458,6 +458,10 @@ def apply_model_sampling(
         return _apply_flux_sampling(
             model, max_shift=shift, base_shift=base_shift, width=width, height=height,
         )
+    if sampling_method == "Qwen Image 2.1":
+        return _apply_qwen_image21_sampling(
+            model, max_shift=shift, base_shift=base_shift, width=width, height=height,
+        )
     if sampling_method == "Stable Cascade":
         return _apply_stable_cascade_sampling(model, shift=shift)
     if sampling_method == "LCM":
@@ -548,6 +552,36 @@ def _apply_flux_sampling(
     log.msg(
         "Model Sampling",
         f"Applied Flux sampling: max_shift={max_shift}, base_shift={base_shift}, width={width}, height={height}, calculated_shift={shift:.4f}",
+    )
+    return m
+
+
+def _apply_qwen_image21_sampling(
+    model, max_shift: float, base_shift: float, width: int, height: int,
+):
+    # Qwen 2.1 has one token per 16x16 output pixels, without Flux's 2x2 packing.
+    config = model.model.model_config
+    if config.unet_config.get("image_model") != "qwen_image21":
+        raise ValueError("Qwen Image 2.1 sampling requires a Qwen Image 2.1 diffusion model.")
+    tokens = (width // 16) * (height // 16)
+    shift = base_shift + (max_shift - base_shift) * (tokens - 256) / (8192 - 256)
+
+    class QwenImage21Sampling(comfy.model_sampling.ModelSamplingFlux, comfy.model_sampling.CONST):
+        pass
+
+    model_sampling = QwenImage21Sampling(config)
+    try:
+        model_sampling.set_parameters(shift=shift)
+    except OverflowError as error:
+        raise ValueError("Qwen Image 2.1 shift is too large for the selected resolution.") from error
+    if not torch.isfinite(model_sampling.sigmas).all():
+        raise ValueError("Qwen Image 2.1 shift produces non-finite sigmas; reduce the shifts or resolution.")
+    m = model.clone()
+    m.add_object_patch("model_sampling", model_sampling)
+    log.msg(
+        "Model Sampling",
+        f"Applied Qwen Image 2.1 sampling: max_shift={max_shift}, base_shift={base_shift}, "
+        f"width={width}, height={height}, tokens={tokens}, calculated_shift={shift:.4f}",
     )
     return m
 
@@ -1006,6 +1040,7 @@ def get_model_loader_inputs() -> list:
                 "SD3",
                 "AuraFlow",
                 "Flux",
+                "Qwen Image 2.1",
                 "Stable Cascade",
                 "LCM",
                 "ContinuousEDM",
@@ -1013,7 +1048,7 @@ def get_model_loader_inputs() -> list:
                 "LTXV",
             ],
             default="None",
-            tooltip="Sampling method: SD3 (shift=3.0), AuraFlow (shift=1.73), Flux (max_shift=1.15), Stable Cascade (shift=2.0), LCM (distilled), ContinuousEDM/V (continuous sampling), LTXV (video)",
+            tooltip="Sampling method: SD3, AuraFlow, Flux, Qwen Image 2.1, Stable Cascade, LCM, ContinuousEDM/V, or LTXV. Qwen Image 2.1 changes the model shift using the target resolution; it does not stretch the scheduler's terminal sigma.",
         ),
         io.Combo.Input(
             "sampling_subtype",
@@ -1033,7 +1068,7 @@ def get_model_loader_inputs() -> list:
             min=0.0,
             max=100.0,
             step=0.01,
-            tooltip="Universal shift parameter (SD3: 3.0, AuraFlow: 1.73, Flux max_shift: 1.15, Stable Cascade: 2.0)",
+            tooltip="Shift parameter. For Qwen Image 2.1, this is max_shift at 8192 image tokens (reference: 0.9). Flux max_shift: 1.15; SD3: 3.0; AuraFlow: 1.73; Stable Cascade: 2.0.",
         ),
         io.Float.Input(
             "base_shift",
@@ -1041,7 +1076,7 @@ def get_model_loader_inputs() -> list:
             min=0.0,
             max=100.0,
             step=0.01,
-            tooltip="Base shift for Flux/LTXV sampling (default: 0.5)",
+            tooltip="Base shift for Flux, Qwen Image 2.1, or LTXV. Qwen Image 2.1 reference: 0.5 at 256 image tokens. Set both shift values equal for a fixed shift.",
         ),
         io.Int.Input(
             "sampling_width",
@@ -1049,7 +1084,7 @@ def get_model_loader_inputs() -> list:
             min=16,
             max=32768,
             step=8,
-            tooltip="Width for Flux sampling shift calculation",
+            tooltip="Actual output width for Flux or Qwen Image 2.1 shift calculation. Match the latent sent to the sampler.",
         ),
         io.Int.Input(
             "sampling_height",
@@ -1057,7 +1092,7 @@ def get_model_loader_inputs() -> list:
             min=16,
             max=32768,
             step=8,
-            tooltip="Height for Flux sampling shift calculation",
+            tooltip="Actual output height for Flux or Qwen Image 2.1 shift calculation. Match the latent sent to the sampler.",
         ),
         io.Int.Input(
             "original_timesteps",

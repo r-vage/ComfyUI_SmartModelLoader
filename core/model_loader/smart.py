@@ -654,20 +654,20 @@ def execute_smart_request(**kwargs):
     # ============================================================
 
     if configure_model_sampling and loaded_model is not None:
-        flux_width = sampling_width
-        flux_height = sampling_height
+        target_width = sampling_width
+        target_height = sampling_height
 
-        if configure_latent and sampling_method == "Flux":
+        if configure_latent and sampling_method in {"Flux", "Qwen Image 2.1"}:
             if resolution != "Custom" and resolution in RESOLUTION_MAP:
                 auto_width, auto_height = RESOLUTION_MAP[resolution]
-                flux_width = auto_width
-                flux_height = auto_height
+                target_width = auto_width
+                target_height = auto_height
             else:
-                flux_width = width
-                flux_height = height
+                target_width = width
+                target_height = height
             log.msg(
                 "Model Sampling",
-                f"Auto-filled Flux dimensions from latent: {flux_width}x{flux_height}",
+                f"Auto-filled {sampling_method} dimensions from latent: {target_width}x{target_height}",
             )
 
         loaded_model = apply_model_sampling(
@@ -675,8 +675,8 @@ def execute_smart_request(**kwargs):
             sampling_method=sampling_method,
             shift=shift,
             base_shift=base_shift,
-            width=flux_width,
-            height=flux_height,
+            width=target_width,
+            height=target_height,
             original_timesteps=original_timesteps,
             zsnr=zsnr,
             sampling_subtype=sampling_subtype,
