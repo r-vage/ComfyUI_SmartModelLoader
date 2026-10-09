@@ -2,6 +2,16 @@
 
 ## 2026-10-09
 
+### Version: 1.0.28
+
+- **Fix**
+  - Update Download Manager transfer, hashing, and verification progress on one console line instead of printing a new line for every update. Clear shorter updates and keep completion, cancellation, errors, and other log messages on separate lines.
+
+**Changed files:**
+- `core/download_manager/manager.py`
+- `core/logger.py`
+- `pyproject.toml`
+
 ### Version: 1.0.27
 
 - **Feat**

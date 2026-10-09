@@ -863,6 +863,8 @@ class DownloadQueueManager:
 
         filename = str((job.get("destination") or {}).get("filename") or "Model")
         filename = "".join(char if char.isprintable() else "?" for char in filename)[:240]
+        if state in _FINAL_STATES:
+            log.finish_progress()
         if state == "completed":
             if job.get("provider_verified") is not True:
                 log.warning(_LOG_PREFIX, f"{filename}: file could not be verified against the selected source")
@@ -879,7 +881,9 @@ class DownloadQueueManager:
             amount = f"{processed / (1024 * 1024):.1f} MiB"
             if total:
                 amount = f"{percent}% ({processed / (1024 * 1024):.1f}/{total / (1024 * 1024):.1f} MiB)"
-            log.debug(_LOG_PREFIX, f"{label} {filename}: {amount}")
+            log.debug_progress(_LOG_PREFIX, f"{label} {filename}: {amount}")
+        elif state in _ACTIVE_STATES:
+            log.debug_progress(_LOG_PREFIX, f"{filename}: {state}")
         else:
             log.debug(_LOG_PREFIX, f"{filename}: {state}")
 

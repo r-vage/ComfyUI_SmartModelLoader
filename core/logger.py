@@ -21,6 +21,8 @@
 #     debug   - Everything
 
 import json
+import sys
+import threading
 from pathlib import Path
 
 # =============================================================================
@@ -215,6 +217,46 @@ def _notify_execution(prefix: str, message: str, severity: str, notify: bool | s
 class SmartModelLoaderLogger:
     # Centralized logger with log level filtering.
 
+    def __init__(self):
+        self._output_lock = threading.RLock()
+        self._progress_stream = None
+        self._progress_width = 0
+
+    def finish_progress(self):
+        # End a transient line even if the final message is filtered out.
+        with self._output_lock:
+            stream = self._progress_stream
+            self._progress_stream = None
+            self._progress_width = 0
+            if stream is not None and not stream.closed:
+                stream.write("\n")
+                stream.flush()
+
+    def _write_message(self, message: cstr):
+        # Keep ordinary messages separate from any active progress line.
+        with self._output_lock:
+            self.finish_progress()
+            message.print()
+
+    def debug_progress(self, prefix: str, message: str):
+        # ComfyUI's console capture recognizes CR updates even on piped stdout.
+        with self._output_lock:
+            if not is_debug_enabled():
+                self.finish_progress()
+                return
+            stream = sys.stdout
+            if stream is not self._progress_stream:
+                self.finish_progress()
+            label = f"[DEBUG {prefix}]" if prefix.strip() else "[DEBUG]"
+            rendered = cstr(f"{label} {message}").msg
+            padding = " " * max(0, self._progress_width - len(rendered))
+            # The first write starts a new entry; later writes replace it.
+            start = "\r" if self._progress_stream is stream else ""
+            stream.write(f"{start}{rendered}{padding}")
+            stream.flush()
+            self._progress_stream = stream
+            self._progress_width = len(rendered)
+
     def _reload_config(self):
         # Force reload of log level from config file (called when config changes).
         pass  # Log level is read dynamically via get_log_level()
@@ -223,41 +265,41 @@ class SmartModelLoaderLogger:
         # Print debug message only when log_level is 'debug'.
         if is_debug_enabled():
             if prefix.strip():
-                cstr(f"[DEBUG {prefix}] {message}").msg.print()
+                self._write_message(cstr(f"[DEBUG {prefix}] {message}").msg)
             else:
-                cstr(f"[DEBUG] {message}").msg.print()
+                self._write_message(cstr(f"[DEBUG] {message}").msg)
 
     def info(self, prefix: str, message: str):
         # Print info message only when log_level is 'info' or higher.
         if is_info_enabled():
             if prefix.strip():
-                cstr(f"[{prefix}] {message}").msg.print()
+                self._write_message(cstr(f"[{prefix}] {message}").msg)
             else:
-                cstr(message).msg.print()
+                self._write_message(cstr(message).msg)
 
     def warning(self, prefix: str, message: str, *, notify: bool | str = False):
         # Print warning message only when log_level is 'warning' or higher.
         if is_warning_enabled():
             if prefix.strip():
-                cstr(f"[WARNING {prefix}] {message}").msg.print()
+                self._write_message(cstr(f"[WARNING {prefix}] {message}").msg)
             else:
-                cstr(f"[WARNING] {message}").msg.print()
+                self._write_message(cstr(f"[WARNING] {message}").msg)
         _notify_execution(prefix, message, "warn", notify)
 
     def error(self, prefix: str, message: str, *, notify: bool | str = False):
         # Print error message (always shown).
         if prefix.strip():
-            cstr(f"[ERROR {prefix}] {message}").msg.print()
+            self._write_message(cstr(f"[ERROR {prefix}] {message}").msg)
         else:
-            cstr(f"[ERROR] {message}").msg.print()
+            self._write_message(cstr(f"[ERROR] {message}").msg)
         _notify_execution(prefix, message, "error", notify)
 
     def msg(self, prefix: str, message: str):
         # Print regular message (always shown, not filtered by log level).
         if prefix.strip():
-            cstr(f"[{prefix}] {message}").msg.print()
+            self._write_message(cstr(f"[{prefix}] {message}").msg)
         else:
-            cstr(message).msg.print()
+            self._write_message(cstr(message).msg)
 
     def format_value(self, val, visited=None, depth=0) -> str:
         # Recursively formats any value to a human-readable summary.
