@@ -2,6 +2,15 @@
 
 ## 2026-10-09
 
+### Version: 1.0.29
+
+- **Fix**
+  - Support console wrappers without a closed attribute when ending Download Manager progress, preventing verified downloads and retries from being reported as failed with AttributeError.
+
+**Changed files:**
+- `core/logger.py`
+- `pyproject.toml`
+
 ### Version: 1.0.28
 
 - **Fix**

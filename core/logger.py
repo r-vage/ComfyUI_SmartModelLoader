@@ -228,7 +228,8 @@ class SmartModelLoaderLogger:
             stream = self._progress_stream
             self._progress_stream = None
             self._progress_width = 0
-            if stream is not None and not stream.closed:
+            # Console wrappers such as ComfyUI-Manager may only expose write/flush.
+            if stream is not None and not getattr(stream, "closed", False):
                 stream.write("\n")
                 stream.flush()
 
