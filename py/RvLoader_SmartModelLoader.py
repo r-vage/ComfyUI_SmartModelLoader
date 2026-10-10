@@ -24,6 +24,11 @@ from comfy_api.latest import io  # type: ignore
 from ..core import CATEGORY, RESOLUTION_PRESETS, SLIDER_DISPLAY
 from ..core.loader_templates import get_template_list, get_template_mtime
 from ..core.logger import log
+from ..core.model_loader.attention import (
+    ATTENTION_BACKEND_DEFAULT,
+    ATTENTION_BACKEND_TOOLTIP,
+    get_attention_backend_options,
+)
 from ..core.model_loader.smart import execute_smart_request
 from ..core.model_loader.validation import (
     DOWNLOAD_TARGET_ROLES,
@@ -400,6 +405,12 @@ class RvLoader_SmartModelLoader(io.ComfyNode):
                     max=1000.0,
                     step=0.01,
                     tooltip="Minimum noise sigma boundary value for ContinuousEDM/ContinuousV scheduling.",
+                ),
+                io.Combo.Input(
+                    "attention_backend",
+                    options=get_attention_backend_options(),
+                    default=ATTENTION_BACKEND_DEFAULT,
+                    tooltip=ATTENTION_BACKEND_TOOLTIP,
                 ),
                 # --- CLIP configuration (visible when 'clip' selected) ---
                 io.Combo.Input(

@@ -35,6 +35,7 @@ from ..model_loader_common import (
     load_custom_vae,
 )
 from ..nunchaku_wrapper import load_nunchaku_model
+from .attention import ATTENTION_BACKEND_DEFAULT, apply_attention_backend
 from .integrity import resolve_integrity_mode, verify_primary_model_integrity
 from .lifecycle import with_loader_execution
 from .loading import LoadRequest, LoadResult
@@ -648,6 +649,10 @@ def execute_smart_request(**kwargs):
         )
 
     lora_string = format_lora_string(lora_params)
+
+    loaded_model = apply_attention_backend(
+        loaded_model, kwargs.get("attention_backend", ATTENTION_BACKEND_DEFAULT),
+    )
 
     # ============================================================
     # STEP 4.5: Apply Model Sampling

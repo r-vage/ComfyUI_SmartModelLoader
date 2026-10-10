@@ -97,3 +97,32 @@ export function migrateLegacySmartLoaderWidgetValues(serializedNode) {
     if (migratedValues === values) return serializedNode;
     return { ...serializedNode, widgets_values: migratedValues };
 }
+
+export function migrateLoaderWidgetValues(serializedNode, smart = false) {
+    const normalized = smart ? migrateLegacySmartLoaderWidgetValues(serializedNode) : serializedNode;
+    const values = normalized?.widgets_values;
+    if (!Array.isArray(values)) return normalized;
+
+    // Trailing UI-only buttons vary with enabled features. Match the CLIP fields
+    // instead of an exact array length so those workflows migrate as well.
+    const index = smart ? 36 : 19;
+    if (values.length < (smart ? 76 : 43)) return normalized;
+    if (normalized.inputs?.some(input => input.name === 'attention_backend')) return normalized;
+    const clipValue = values[index];
+    const nextValue = values[index + 1];
+    if (clipValue == null && nextValue == null &&
+        !normalized.inputs?.some(input => input.name === (smart ? 'clip_source' : 'enable_clip_layer'))) {
+        return normalized;
+    }
+    // Converted widgets can serialize a null placeholder while retaining their input link.
+    const legacyClip = smart
+        ? (clipValue == null || ['Baked', 'External', 'External + Model File'].includes(clipValue)) &&
+            (nextValue == null || ['1', '2', '3', '4'].includes(nextValue))
+        : (clipValue == null || typeof clipValue === 'boolean') &&
+            (nextValue == null || (Number.isInteger(nextValue) && nextValue >= -24 && nextValue <= -1));
+    if (!legacyClip) return normalized;
+
+    const migratedValues = values.slice();
+    migratedValues.splice(index, 0, 'pytorch attention');
+    return { ...normalized, widgets_values: migratedValues };
+}

@@ -137,6 +137,7 @@ _ENUMS = {
     "weight_dtype": {"default", "fp8_e4m3fn", "fp8_e4m3fn_fast", "fp8_e5m2"},
     "data_type": {"bfloat16", "float16"},
     "attention": {"flash-attention2", "nunchaku-fp16"},
+    "attention_backend": {"pytorch attention", "comfy kitchen attention"},
     "i2f_mode": {"enabled", "always"},
     "cpu_offload": {"auto", "enable", "disable"},
     "use_pin_memory": {"enable", "disable"},

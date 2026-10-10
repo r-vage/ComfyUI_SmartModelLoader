@@ -2,6 +2,26 @@
 
 ## 2026-10-09
 
+### Version: 1.0.30
+
+- **Feat**
+  - Add attention backend selection above the CLIP controls in Smart Model Loader, Model Loader, and Model Loader Pipe. Default to PyTorch and offer Comfy Kitchen INT8 attention when supported, using ComfyUI's native per-model patch and fallback behavior. Save the selection in Smart Loader templates.
+
+- **Fix**
+  - Migrate older loader widget arrays before loading so CLIP and later settings retain their values and input links. Existing workflows and templates without a backend selection receive the PyTorch default.
+
+**Changed files:**
+- `Readme/Smart_Loaders.md`
+- `core/model_loader/attention.py`
+- `core/model_loader/smart.py`
+- `core/model_loader/validation.py`
+- `core/model_loader_common.py`
+- `js/eclipse-model-loader.js`
+- `js/eclipse-smart-model-loader.js`
+- `js/smart-model-loader-widget-migration.js`
+- `py/RvLoader_SmartModelLoader.py`
+- `pyproject.toml`
+
 ### Version: 1.0.29
 
 - **Fix**

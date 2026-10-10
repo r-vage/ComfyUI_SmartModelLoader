@@ -33,7 +33,7 @@ import {
     classifyIntegrityVerifyResult,
     resolveIntegrityUiState,
 } from './smart-model-loader-integrity-flow.js';
-import { migrateLegacySmartLoaderWidgetValues } from './smart-model-loader-widget-migration.js';
+import { migrateLoaderWidgetValues } from './smart-model-loader-widget-migration.js';
 import {
     applyModelSamplingDefaults,
     applyModelSamplingTemplate,
@@ -128,7 +128,7 @@ app.registerExtension({
         if (origConfigure) {
             nodeType.prototype.configure = function (data) {
                 const args = [...arguments];
-                const migratedData = migrateLegacySmartLoaderWidgetValues(data);
+                const migratedData = migrateLoaderWidgetValues(data, true);
                 if (migratedData !== data) this._smartModelLoaderWidgetValuesMigrated = true;
                 args[0] = migratedData;
                 return origConfigure.apply(this, args);
@@ -1054,6 +1054,7 @@ app.registerExtension({
                 sv('blocks_to_swap', 10);
                 sv('offload_embeddings', false);
                 resetModelSamplingFields(sv);
+                sv('attention_backend', 'pytorch attention');
                 sv('clip_source', 'Baked');
                 sv('clip_count', '1');
                 sv('clip_name1', 'None');
@@ -1176,6 +1177,7 @@ app.registerExtension({
                         if (data[f] !== undefined) sv(f, data[f]);
                     }
                     applyModelSamplingTemplate(data, sv);
+                    sv('attention_backend', data.attention_backend ?? 'pytorch attention');
                     if (data.model_precision !== undefined) {
                         sv('model_precision', data.model_precision);
                     }
@@ -1319,6 +1321,7 @@ app.registerExtension({
                 cfg.features = feats.filter(f => f !== 'templates' && f !== 'memory_cleanup' && f !== 'seed' && f !== 'integrity' && f !== 'latent');
                 const mt = gv('model_type');
                 cfg.model_type = mt;
+                cfg.attention_backend = gv('attention_backend') || 'pytorch attention';
                 cfg.model_precision = gv('model_precision') || 'default';
                 cfg.configure_clip = feats.includes('clip');
                 cfg.configure_vae = feats.includes('vae');

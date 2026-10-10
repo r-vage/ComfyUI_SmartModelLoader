@@ -7,6 +7,7 @@ The unified model loader in ComfyUI Smart Model Loader — compatible with workf
 - [Combo-Chip Feature System](#combo-chip-feature-system)
 - [Model Types & Formats](#model-types--formats)
 - [Template System](#template-system)
+- [Model Attention Backend](#model-attention-backend)
 - [CLIP Configuration](#clip-configuration)
 - [VAE Configuration](#vae-configuration)
 - [Audio VAE Configuration](#audio-vae-configuration)
@@ -159,7 +160,7 @@ Templates save the loader configuration to `ComfyUI_SmartModelLoader/templates/`
 ### What Gets Saved
 
 Templates only save settings for enabled feature chips:
-- Model type and model file selection (always)
+- Model type, model file selection, and attention backend (always)
 - CLIP settings (if `clip` chip enabled)
 - VAE settings (if `vae` chip enabled)
 - Latent/resolution (if `latent` chip enabled)
@@ -175,6 +176,23 @@ Templates only save settings for enabled feature chips:
 4. All template-eligible settings restored instantly
 
 ---
+
+## Model Attention Backend
+
+Smart Model Loader, Model Loader, and Model Loader Pipe expose `attention_backend`
+directly above their CLIP controls. **pytorch attention** is the default.
+**comfy kitchen attention** appears when the installed ComfyUI reports support;
+it uses quantized INT8 attention on supported Nvidia and AMD GPUs.
+
+The selection uses the same model patch as ComfyUI's **Model Attention Backend**
+node and travels with the MODEL output or PIPE. It affects diffusion-model
+attention, not CLIP. Custom kernels that bypass ComfyUI's attention dispatcher
+retain their own backend. If a saved Comfy Kitchen selection is unavailable,
+the loader warns and falls back to PyTorch, matching the native node.
+
+Older workflows automatically receive the PyTorch default while retaining their
+CLIP and later widget values and input links. Smart Loader templates save the
+selection; templates without this field use PyTorch.
 
 ## CLIP Configuration
 

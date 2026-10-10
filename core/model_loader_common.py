@@ -29,6 +29,12 @@ from .gguf_wrapper import (
 )
 from .logger import log
 from .model_loader import pipes as _pipes
+from .model_loader.attention import (
+    ATTENTION_BACKEND_DEFAULT,
+    ATTENTION_BACKEND_TOOLTIP,
+    apply_attention_backend,
+    get_attention_backend_options,
+)
 from .model_loader.blockswap import apply_blockswap as _apply_blockswap
 from .model_loader.integrity import read_safetensors_header
 from .model_loader.qwen_vae import normalize_qwen_vae
@@ -958,6 +964,12 @@ def get_model_loader_inputs() -> list:
             label_off="no",
             tooltip="Apply patches on GPU",
         ),
+        io.Combo.Input(
+            "attention_backend",
+            options=get_attention_backend_options(),
+            default=ATTENTION_BACKEND_DEFAULT,
+            tooltip=ATTENTION_BACKEND_TOOLTIP,
+        ),
         io.Boolean.Input(
             "enable_clip_layer",
             default=True,
@@ -1546,6 +1558,10 @@ def load_model(log_prefix: str, **kwargs) -> tuple[Any, Any, Any, Any, str, str]
         lora_string = " ".join(
             f"<lora:{name}:{weight}:{weight}>" for name, weight in lora_params
         )
+
+    loaded_model = apply_attention_backend(
+        loaded_model, kwargs.get("attention_backend", ATTENTION_BACKEND_DEFAULT),
+    )
 
     # ── Apply Model Sampling ──
 

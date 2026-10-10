@@ -19,6 +19,7 @@ import {
     applyModelSamplingDefaults,
     getModelSamplingVisibility,
 } from './smart-model-loader-model-sampling.js';
+import { migrateLoaderWidgetValues } from './smart-model-loader-widget-migration.js';
 const NODE_CONFIGS = {
     'Model Loader [Eclipse]': {
         extName: 'SmartModelLoader.ModelLoader',
@@ -64,6 +65,14 @@ for (const [nodeName, cfg] of Object.entries(NODE_CONFIGS)) {
         name: cfg.extName,
         async beforeRegisterNodeDef(nodeType, nodeData, _app) {
             if (nodeData.name !== nodeName) return;
+            const origConfigure = nodeType.prototype.configure;
+            if (origConfigure) {
+                nodeType.prototype.configure = function (data) {
+                    const args = [...arguments];
+                    args[0] = migrateLoaderWidgetValues(data);
+                    return origConfigure.apply(this, args);
+                };
+            }
             const origOnNodeCreated = nodeType.prototype.onNodeCreated;
             nodeType.prototype.onNodeCreated = function () {
                 const ret = origOnNodeCreated ? origOnNodeCreated.apply(this, arguments) : void 0;
